@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- vi: set et smarttab sw=4 tabstop=4: -->
 <!--
-Copyright © 2016 Mingming Chen and others. All rights reserved.
+Copyright © 2015 Mingming Chen and others. All rights reserved.
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License v1.0 which accompanies this distribution,
@@ -23,6 +23,7 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
     <feature version='${mdsal.version}'>odl-mdsal-broker</feature>
     <feature version='${project.version}'>odl-latency-api</feature>
     <bundle>mvn:org.opendaylight.latency/latency-impl/{{VERSION}}</bundle>
+    <configfile finalname="${configfile.directory}/latency.xml">mvn:org.opendaylight.latency/latency-impl/{{VERSION}}/xml/config</configfile>
   </feature>
   <feature name='odl-latency-rest' version='${project.version}' description='OpenDaylight :: latency :: REST'>
     <feature version="${project.version}">odl-latency</feature>
@@ -34,4 +35,5 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
     <feature version="${mdsal.version}">odl-mdsal-xsql</feature>
     <feature version="${dlux.version}">odl-dlux-yangui</feature>
   </feature>
+
 </features>

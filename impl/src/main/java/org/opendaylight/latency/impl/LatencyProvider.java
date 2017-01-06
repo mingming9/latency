@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016 Mingming Chen and others.  All rights reserved.
+ * Copyright © 2015 Mingming Chen and others.  All rights reserved.
  *
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
@@ -7,31 +7,23 @@
  */
 package org.opendaylight.latency.impl;
 
-import org.opendaylight.controller.md.sal.binding.api.DataBroker;
+import org.opendaylight.controller.sal.binding.api.BindingAwareBroker.ProviderContext;
+import org.opendaylight.controller.sal.binding.api.BindingAwareProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LatencyProvider {
+public class LatencyProvider implements BindingAwareProvider, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(LatencyProvider.class);
 
-    private final DataBroker dataBroker;
-
-    public LatencyProvider(final DataBroker dataBroker) {
-        this.dataBroker = dataBroker;
-    }
-
-    /**
-     * Method called when the blueprint container is created.
-     */
-    public void init() {
+    @Override
+    public void onSessionInitiated(ProviderContext session) {
         LOG.info("LatencyProvider Session Initiated");
     }
 
-    /**
-     * Method called when the blueprint container is destroyed.
-     */
-    public void close() {
+    @Override
+    public void close() throws Exception {
         LOG.info("LatencyProvider Closed");
     }
+
 }
