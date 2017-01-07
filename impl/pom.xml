@@ -21,12 +21,23 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
   <artifactId>latency-impl</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <packaging>bundle</packaging>
+  
+  <properties>
+  <openflow.plugin.version>0.2.4-Beryllium-SR4</openflow.plugin.version>
+  </properties>
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>latency-api</artifactId>
       <version>${project.version}</version>
     </dependency>
+    
+    <dependency>
+      <groupId>org.opendaylight.openflowplugin.model</groupId>
+      <artifactId>model-flow-service</artifactId>
+      <version>${openflow.plugin.version}</version>
+    </dependency>
+    
 
     <!-- Testing Dependencies -->
     <dependency>

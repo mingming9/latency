@@ -7,7 +7,10 @@
  */
 package org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.impl.rev141210;
 
+import org.opendaylight.controller.sal.binding.api.BindingAwareBroker;
 import org.opendaylight.latency.impl.LatencyProvider;
+import org.opendaylight.latency.impl.Latencymain;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.LatencyService;
 
 public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.impl.rev141210.AbstractLatencyModule {
     public LatencyModule(org.opendaylight.controller.config.api.ModuleIdentifier identifier, org.opendaylight.controller.config.api.DependencyResolver dependencyResolver) {
@@ -26,7 +29,9 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
     @Override
     public java.lang.AutoCloseable createInstance() {
         LatencyProvider provider = new LatencyProvider();
+        Latencymain latencymain = new Latencymain();
         getBrokerDependency().registerProvider(provider);
+        BindingAwareBroker.RpcRegistration<LatencyService> rpcRegistration = getRpcRegistryDependency().addRpcImplementation(LatencyService.class, latencymain);
         return provider;
     }
 

@@ -6,4 +6,56 @@ module latency {
     revision "2015-01-05" {
         description "Initial revision of latency model";
     }
+    
+    identity latency-type {
+    	description
+    	"Base for latency types of ctr-sw latency and sw-sw latency";
+    }
+    
+    identity ctr-sw-latency {
+    	base latency-type;
+    	description "define latency type between controller and switches.";
+    }
+    
+    identity sw-sw-latency {
+    	base latency-type;
+    	description "define latency type between switches.";
+    }
+    
+    rpc latency {
+    	input {
+    		leaf type {
+    			type string;
+    		}
+    	}
+    	output {
+    		list pairs {
+    			leaf src {
+    				type string;
+    			}
+    			leaf dst {
+    				type string;
+    			}
+    			leaf latency {
+    				type uint32;
+    			}
+    		}
+    	}
+    }
+    
+    rpc latency-request {
+    	input {
+    		leaf src-dpId {
+    			type string;
+    		}
+    		leaf dst-dpId {
+    			type string;
+    		}
+    	}
+    	output {
+    		leaf latency {
+    			type uint32;
+    		}
+    	}
+    }
 }
