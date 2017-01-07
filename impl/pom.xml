@@ -37,6 +37,16 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
       <artifactId>model-flow-service</artifactId>
       <version>${openflow.plugin.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.opendaylight.openflowplugin.applications</groupId>
+      <artifactId>lldp-speaker</artifactId>
+      <version>${openflow.plugin.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opendaylight.openflowplugin</groupId>
+      <artifactId>openflowplugin</artifactId>
+      <version>${openflow.plugin.version}</version>
+    </dependency>  
     
 
     <!-- Testing Dependencies -->

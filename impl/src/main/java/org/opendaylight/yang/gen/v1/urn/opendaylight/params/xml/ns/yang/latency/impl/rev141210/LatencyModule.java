@@ -7,13 +7,24 @@
  */
 package org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.impl.rev141210;
 
+import java.util.concurrent.Executors;
+
 import org.opendaylight.controller.sal.binding.api.BindingAwareBroker;
 import org.opendaylight.latency.impl.LatencyProvider;
-import org.opendaylight.latency.impl.Latencymain;
+//import org.opendaylight.latency.impl.Latencymain;
+import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
+import org.opendaylight.openflowplugin.applications.lldpspeaker.NodeConnectorInventoryEventTranslator;
+import org.opendaylight.openflowplugin.applications.lldpspeaker.OperationalStatusChangeService;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.LatencyService;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.openflow.applications.lldp.speaker.rev141023.LldpSpeakerService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.impl.rev141210.AbstractLatencyModule {
-    public LatencyModule(org.opendaylight.controller.config.api.ModuleIdentifier identifier, org.opendaylight.controller.config.api.DependencyResolver dependencyResolver) {
+	private static final Logger LOG = LoggerFactory.getLogger(LatencyModule.class);
+	public LatencyModule(org.opendaylight.controller.config.api.ModuleIdentifier identifier, org.opendaylight.controller.config.api.DependencyResolver dependencyResolver) {
         super(identifier, dependencyResolver);
     }
 
@@ -28,11 +39,28 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
 
     @Override
     public java.lang.AutoCloseable createInstance() {
-        LatencyProvider provider = new LatencyProvider();
-        Latencymain latencymain = new Latencymain();
-        getBrokerDependency().registerProvider(provider);
-        BindingAwareBroker.RpcRegistration<LatencyService> rpcRegistration = getRpcRegistryDependency().addRpcImplementation(LatencyService.class, latencymain);
-        return provider;
+    	PacketProcessingService packetProcessingService = getRpcRegistryDependency().getRpcService(PacketProcessingService.class);
+        MacAddress macDestination = getAddressDestination();
+        final LLDPSpeaker lldpSpeaker = new LLDPSpeaker(packetProcessingService, Executors.newSingleThreadScheduledExecutor(), macDestination);
+        
+        LatencyProvider latencyProvider = new LatencyProvider(packetProcessingService, getDataBrokerDependency(), lldpSpeaker);
+        final NodeConnectorInventoryEventTranslator eventTranslator = new NodeConnectorInventoryEventTranslator(
+                getDataBrokerDependency(), lldpSpeaker);
+
+       //OperationalStatusChangeService operationalStatusChangeService = new OperationalStatusChangeService(lldpSpeaker);
+        final BindingAwareBroker.RpcRegistration<LatencyService> latencyServiceRegistration =
+                getRpcRegistryDependency().addRpcImplementation(LatencyService.class, latencyProvider);
+
+        
+        return new AutoCloseable() {
+            @Override
+            public void close() {
+                LOG.trace("Closing LLDP speaker.");
+                eventTranslator.close();
+                lldpSpeaker.close();
+                latencyServiceRegistration.close();
+            }
+        };
     }
 
 }

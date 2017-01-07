@@ -114,6 +114,14 @@ and is available at http://www.eclipse.org/legal/epl-v10.html INTERNAL
       <type>xml</type>
       <scope>runtime</scope>
     </dependency>
+       <dependency>
+      <groupId>org.opendaylight.openflowplugin</groupId>
+      <artifactId>features-openflowplugin-li</artifactId>
+      <version>${openflow.plugin.version}</version>
+      <classifier>features</classifier>
+      <type>xml</type>
+      <scope>runtime</scope>
+    </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>latency-api</artifactId>
