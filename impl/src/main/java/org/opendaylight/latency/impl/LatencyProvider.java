@@ -7,16 +7,21 @@
  */
 package org.opendaylight.latency.impl;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.md.sal.binding.api.DataChangeListener;
 import org.opendaylight.controller.md.sal.common.api.data.AsyncDataChangeEvent;
 import org.opendaylight.controller.sal.binding.api.NotificationProviderService;
+import org.opendaylight.latency.collection.LatencyRepo;
+import org.opendaylight.latency.collection.NetworkLatency;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
 import org.opendaylight.openflowplugin.openflow.md.core.ConnectionConductorImpl;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
 //import org.opendaylight.openflowplugin.impl.services.SalEchoServiceImpl;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.echo.service.rev150305.SendEchoInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.echo.service.rev150305.SendEchoInputBuilder;
@@ -55,13 +60,15 @@ public class LatencyProvider implements LatencyService, DataChangeListener, Pack
 	//SalEchoServiceImpl salEchoServiceImpl;
    // private OperStatus operationalStatus = OperStatus.RUN;
 	private EchoMsg echoMsg;
+	private MacAddress macAddress;
 
 	
 
-	public LatencyProvider(PacketProcessingService packetProcessingService, DataBroker dataBroker, LLDPSpeaker lldpSpeaker) {
+	public LatencyProvider(PacketProcessingService packetProcessingService, DataBroker dataBroker, LLDPSpeaker lldpSpeaker, MacAddress mac) {
 		this.packetProcessingService = packetProcessingService;
 		this.dataBroker = dataBroker;
 		this.lldpSpeaker = lldpSpeaker;
+		this.macAddress = mac;
 		
 	}
 	
@@ -74,8 +81,10 @@ public class LatencyProvider implements LatencyService, DataChangeListener, Pack
 		if (type.equals(ctr)) {
 			LOG.info("I am in ctr-sw now");
 			
-			lldpSpeaker.run();
-			System.out.println("lldpSpeaker is running");
+			NetworkLatency lr = new NetworkLatency(packetProcessingService,dataBroker);
+			lr.execute();
+			System.out.println("NetworkLatency is finished");
+			
 			
 			
 			LatencyOutput latencyOutput = buildCtrSwLatencyOutput(type);

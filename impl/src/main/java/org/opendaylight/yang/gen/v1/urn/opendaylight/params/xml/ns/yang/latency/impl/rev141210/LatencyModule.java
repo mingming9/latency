@@ -43,7 +43,7 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
         MacAddress macDestination = getAddressDestination();
         final LLDPSpeaker lldpSpeaker = new LLDPSpeaker(packetProcessingService, Executors.newSingleThreadScheduledExecutor(), macDestination);
         
-        LatencyProvider latencyProvider = new LatencyProvider(packetProcessingService, getDataBrokerDependency(), lldpSpeaker);
+        LatencyProvider latencyProvider = new LatencyProvider(packetProcessingService, getDataBrokerDependency(), lldpSpeaker, macDestination);
         final NodeConnectorInventoryEventTranslator eventTranslator = new NodeConnectorInventoryEventTranslator(
                 getDataBrokerDependency(), lldpSpeaker);
 

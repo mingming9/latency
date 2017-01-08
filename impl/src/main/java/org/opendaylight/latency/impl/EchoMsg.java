@@ -16,6 +16,7 @@ import org.opendaylight.openflowplugin.api.openflow.md.core.SwitchConnectionDist
 import org.opendaylight.openflowplugin.api.openflow.md.core.session.SessionContext;
 import org.opendaylight.openflowplugin.api.openflow.md.queue.QueueProcessor;
 import org.opendaylight.openflowplugin.openflow.md.core.ConnectionConductorImpl;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.echo.service.rev150305.SalEchoService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.EchoInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.EchoOutput;
@@ -28,13 +29,12 @@ public class EchoMsg {
 	public EchoMsg() {
 		
 	}
-	
+	/*
 	public Future<RpcResult<EchoOutput>> echoReplyFuture(NodeId nodeId) {
 		EchoInput echoInput = Util.constructEchoInput(nodeId);
-		ConnectionConductorImpl connectionConductorImpl = null;
-		return connectionConductorImpl.getConnectionAdapter().echo(echoInput);
+		SalEchoService salEchoService = new SalEchoService();
 	}
-	
+	*/
 	
 	
 	
