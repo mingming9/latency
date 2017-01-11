@@ -10,6 +10,9 @@ package org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency
 import java.util.concurrent.Executors;
 
 import org.opendaylight.controller.sal.binding.api.BindingAwareBroker;
+import org.opendaylight.controller.sal.binding.api.BindingAwareService;
+import org.opendaylight.controller.sal.binding.api.NotificationProviderService;
+import org.opendaylight.latency.collection.NetworkLatency;
 import org.opendaylight.latency.impl.LatencyProvider;
 //import org.opendaylight.latency.impl.Latencymain;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
@@ -19,6 +22,8 @@ import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.LatencyService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.openflow.applications.lldp.speaker.rev141023.LldpSpeakerService;
+import org.opendaylight.yangtools.concepts.ListenerRegistration;
+import org.opendaylight.yangtools.yang.binding.NotificationListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +44,13 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
 
     @Override
     public java.lang.AutoCloseable createInstance() {
+    	LatencyProvider latencyProvider = new LatencyProvider();
+    	BindingAwareBroker broker = getBrokerDependency();
+    	broker.registerProvider(latencyProvider);
+    	return latencyProvider;
+    	
+    }
+   /* public java.lang.AutoCloseable createInstance() {
     	PacketProcessingService packetProcessingService = getRpcRegistryDependency().getRpcService(PacketProcessingService.class);
         MacAddress macDestination = getAddressDestination();
         final LLDPSpeaker lldpSpeaker = new LLDPSpeaker(packetProcessingService, Executors.newSingleThreadScheduledExecutor(), macDestination);
@@ -50,6 +62,9 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
        //OperationalStatusChangeService operationalStatusChangeService = new OperationalStatusChangeService(lldpSpeaker);
         final BindingAwareBroker.RpcRegistration<LatencyService> latencyServiceRegistration =
                 getRpcRegistryDependency().addRpcImplementation(LatencyService.class, latencyProvider);
+        
+        NetworkLatency nl = new NetworkLatency(packetProcessingService, )
+        final NotificationProviderService nps = getNotificationServiceDependency().registerNotificationListener(nl);
 
         
         return new AutoCloseable() {
@@ -61,6 +76,6 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
                 latencyServiceRegistration.close();
             }
         };
-    }
+    }*/
 
 }

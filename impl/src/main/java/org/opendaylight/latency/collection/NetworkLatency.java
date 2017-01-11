@@ -18,16 +18,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+import org.opendaylight.controller.liblldp.Ethernet;
+import org.opendaylight.controller.liblldp.PacketException;
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
+import org.opendaylight.controller.sal.binding.api.BindingAwareBroker.ProviderContext;
+import org.opendaylight.controller.sal.binding.api.BindingAwareProvider;
 import org.opendaylight.latency.impl.LatencyProvider;
 import org.opendaylight.latency.util.InventoryUtil;
 import org.opendaylight.latency.util.LatencyUtil;
 import org.opendaylight.latency.util.LldpUtil;
-import org.opendaylight.latency.util.ReflectionUtil;
 import org.opendaylight.latency.util.TopologyUtil;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPUtil;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.NodeConnectorEventsObserver;
+import org.opendaylight.openflowplugin.applications.topology.lldp.utils.LLDPDiscoveryUtils;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNodeConnector;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorId;
@@ -35,23 +39,28 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeCon
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeRef;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.NodeConnector;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingListener;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketReceived;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.openflow.applications.lldp.speaker.rev141023.OperStatus;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.Topology;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.topology.Link;
+import org.opendaylight.yangtools.concepts.ListenerRegistration;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
+import org.opendaylight.yangtools.yang.binding.NotificationListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NetworkLatency implements LatencyRepo{
 	private static final Logger LOG = LoggerFactory.getLogger(NetworkLatency.class);
 	//private Map<InstanceIdentifier<NodeConnector>, TransmitPacketInput> nodeConnectormap = new ConcurrentHashMap<>();;
-	public Map<NodeConnectorId, String> pktOutTimeMap = new ConcurrentHashMap<>();
+	public Map<NodeConnectorRef, Long> pktOutTimeMap = new ConcurrentHashMap<>();
 	private PacketProcessingService packetProcessingService;
 	//private MacAddress addressDestionation;
 	private DataBroker dataBroker;
 	public static String TOPO_ID = "flow:1";
+	private ListenerRegistration<NotificationListener> notificationListnerReg;
 
 	/*public NetworkLatency(PacketProcessingService packetProcessingService,
 			ScheduledExecutorService scheduledExecutorService,
@@ -114,9 +123,12 @@ public class NetworkLatency implements LatencyRepo{
 			System.out.println("srclldppkt is {}" + srclldppkt);
 			packetProcessingService.transmitPacket(srclldppkt);
 			System.out.println("srcPktout succeed");
-			SimpleDateFormat srcdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String srcpktOutTime = srcdf.format(new Date());
-            pktOutTimeMap.put(srcnodeConnectorId, srcpktOutTime);             
+			/*SimpleDateFormat srcdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String srcpktOutTime = srcdf.format(new Date());*/
+			Date srcdate = new Date();
+ 		    Long srcpktOutTime = srcdate.getTime();            
+            System.out.println("NodeConnector:"+ dstNCRef + ", packet_out is sent at" + srcpktOutTime);
+            pktOutTimeMap.put(dstNCRef, srcpktOutTime);             
             System.out.println("NodeConnector:"+ srcnodeConnectorId + ", packet_out is sent at" + srcpktOutTime);
 			
              //dstlldp
@@ -125,9 +137,12 @@ public class NetworkLatency implements LatencyRepo{
  			System.out.println("dstlldppkt is {}" + dstlldppkt);
  		    packetProcessingService.transmitPacket(dstlldppkt);
  		    System.out.println("srcPktout succeed");
- 			SimpleDateFormat dstdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            String dstpktOutTime = dstdf.format(new Date());
-            pktOutTimeMap.put(dstnodeConnectorId, dstpktOutTime);             
+ 			/*SimpleDateFormat dstdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String dstpktOutTime = dstdf.format(new Date());*/
+ 		    Date dstdate = new Date();
+		    Long dstpktOutTime = dstdate.getTime();             
+            System.out.println("NodeConnector:"+ dstNCRef + ", packet_out is sent at" + dstpktOutTime);
+            pktOutTimeMap.put(dstNCRef, dstpktOutTime);             
             System.out.println("NodeConnector:"+ dstnodeConnectorId + ", packet_out is sent at" + dstpktOutTime);
 			
 		}
@@ -135,7 +150,18 @@ public class NetworkLatency implements LatencyRepo{
 		// TODO Auto-generated method stub
 		
 	}
+	public Map<NodeConnectorRef, Long> getTimeMap() {
+		return this.pktOutTimeMap;
+	}
 
+
+	
+	
+		
+
+		
+
+	
 /*	public Map<InstanceIdentifier<NodeConnector>, TransmitPacketInput> getNodeConnectorMap(PacketProcessingService packetProcessingService, MacAddress mac) {
 		System.out.println("getNodeConnectorMap is invoked");		
 		//Field fieldPassword;
@@ -198,6 +224,8 @@ public class NetworkLatency implements LatencyRepo{
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+
 
 
 
