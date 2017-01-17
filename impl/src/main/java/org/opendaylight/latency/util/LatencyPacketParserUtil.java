@@ -1,0 +1,197 @@
+/*
+ * Copyright (c) 2014 Cisco Systems, Inc. and others.  All rights reserved.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v1.0 which accompanies this distribution,
+ * and is available at http://www.eclipse.org/legal/epl-v10.html
+ */
+package org.opendaylight.latency.util;
+
+import org.apache.commons.lang3.ArrayUtils;
+
+import java.nio.charset.Charset;
+
+import com.google.common.hash.HashCode;
+
+import org.opendaylight.controller.liblldp.Ethernet;
+import org.opendaylight.controller.liblldp.BitBufferHelper;
+//import org.opendaylight.controller.liblldp.LLDP;
+//import org.opendaylight.controller.liblldp.LLDPTLV;
+import org.opendaylight.controller.liblldp.NetUtils;
+
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
+import com.google.common.hash.HashFunction;
+
+
+
+
+import org.opendaylight.latency.packet.LatencyPacket;
+import org.opendaylight.latency.packet.LatencyPacketTLV;
+//import org.opendaylight.latency.packet.LLDP;
+//import org.opendaylight.latency.packet.LLDPTLV;
+import org.opendaylight.openflowplugin.applications.topology.lldp.LLDPActivator;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorId;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorRef;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.Nodes;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.NodeConnector;
+
+import java.util.Arrays;
+import java.security.NoSuchAlgorithmException;
+
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.NodeConnectorKey;
+
+import java.lang.management.ManagementFactory;
+
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.Node;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.NodeKey;
+import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
+import org.opendaylight.controller.liblldp.CustomTLVKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class LatencyPacketParserUtil {
+
+
+
+
+    private static final Logger LOG = LoggerFactory.getLogger(LatencyPacketParserUtil.class);
+
+    // Send LLDP every five seconds
+    public static final Long LLDP_INTERVAL = (long) (1000*5);
+
+    // Let up to three intervals pass before we decide we are expired.
+    public static final Long LLDP_EXPIRATION_TIME = LLDP_INTERVAL*3;
+
+    public static String macToString(byte[] mac) {
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < mac.length; i++) {
+            b.append(String.format("%02X%s", mac[i], (i < mac.length - 1) ? ":" : ""));
+        }
+
+        return b.toString();
+    }
+
+
+    public static NodeConnectorRef pktToNodeConnectorRef(byte[] payload)  {
+        return pktToNodeConnectorRef(payload, false);
+    }
+
+
+    public static NodeConnectorRef pktToNodeConnectorRef(byte[] payload, boolean useExtraAuthenticatorCheck)  {
+        Ethernet ethPkt = new Ethernet();
+        try {
+            ethPkt.deserialize(payload, 0,payload.length * NetUtils.NumBitsInAByte);
+        } catch (Exception e) {
+            LOG.warn("Failed to decode LLDP packet {}", e);
+        }
+
+        NodeConnectorRef nodeConnectorRef = null;
+
+        if (ethPkt.getPayload() instanceof LatencyPacket) {
+        	LatencyPacket lldp = (LatencyPacket) ethPkt.getPayload();
+
+            try {
+                NodeId srcNodeId = null;
+                NodeConnectorId srcNodeConnectorId = null;
+
+                final LatencyPacketTLV systemIdTLV = lldp.getSystemNameId();
+                if (systemIdTLV != null) {
+                    String srcNodeIdString = new String(systemIdTLV.getValue(),Charset.defaultCharset());
+                    srcNodeId = new NodeId(srcNodeIdString);
+                } else {
+                    throw new Exception("Node id wasn't specified via systemNameId in LLDP packet.");
+                }
+
+                final LatencyPacketTLV nodeConnectorIdLldptlv = lldp.getCustomTLV(
+                        new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_NODE_CONNECTOR_ID[0]));
+                if (nodeConnectorIdLldptlv != null) {
+                    srcNodeConnectorId = new NodeConnectorId(LatencyPacketTLV.getCustomString(
+                            nodeConnectorIdLldptlv.getValue(), nodeConnectorIdLldptlv.getLength()));
+                } else {
+                    throw new Exception("Node connector wasn't specified via Custom TLV in LLDP packet.");
+                }
+
+                if (useExtraAuthenticatorCheck) {
+                    boolean secure = checkLatencyPacket(lldp, srcNodeConnectorId);
+                    if (! secure) {
+                        LOG.warn("SECURITY ALERT: there is probably a LLDP spoofing attack in progress.");
+                        throw new Exception("Attack. LLDP packet with inconsistent extra authenticator field was received.");
+                    }
+                }
+
+                InstanceIdentifier<NodeConnector> srcInstanceId = InstanceIdentifier.builder(Nodes.class)
+                        .child(Node.class,new NodeKey(srcNodeId))
+                        .child(NodeConnector.class, new NodeConnectorKey(srcNodeConnectorId))
+                        .toInstance();
+                nodeConnectorRef = new NodeConnectorRef(srcInstanceId);
+            } catch (Exception e) {
+                LOG.debug("Caught exception while parsing out lldp optional and custom fields: {}", e.getMessage(), e);
+            }
+        }
+        return nodeConnectorRef;
+    }
+
+
+    public static boolean checkLatency(byte[] payload) {
+        Ethernet ethPkt = new Ethernet();
+        try {
+            ethPkt.deserialize(payload, 0,payload.length * NetUtils.NumBitsInAByte);
+        } catch (Exception e) {
+            LOG.warn("Failed to decode LLDP packet {}", e);
+        }
+        NodeConnectorId srcNodeConnectorId = null;
+        boolean latencyFlag = false;
+
+        if (ethPkt.getPayload() instanceof LatencyPacket) {
+        	LatencyPacket lldp = (LatencyPacket) ethPkt.getPayload();
+            try {
+
+                final LatencyPacketTLV nodeConnectorIdLldptlv = lldp.getCustomTLV(
+                        new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_NODE_CONNECTOR_ID[0]));
+                if (nodeConnectorIdLldptlv != null) {
+                    srcNodeConnectorId = new NodeConnectorId(LatencyPacketTLV.getCustomString(
+                            nodeConnectorIdLldptlv.getValue(), nodeConnectorIdLldptlv.getLength()));
+                    latencyFlag = checkLatencyPacket(lldp, srcNodeConnectorId);
+                } else {
+                    throw new Exception("Node connector wasn't specified via Custom TLV in LLDP packet.");
+                } 
+            } catch (Exception e) {
+                    LOG.debug("Caught exception while parsing out lldp optional and custom fields: {}", e.getMessage(), e);
+                }
+            }
+		return latencyFlag;
+    	
+    }
+    
+    public static byte[] getValueForLLDPPacketIntegrityEnsuring(final NodeConnectorId nodeConnectorId) throws NoSuchAlgorithmException {
+        String finalKey;
+        if(LLDPActivator.getLldpSecureKey() !=null && !LLDPActivator.getLldpSecureKey().isEmpty()) {
+            finalKey = LLDPActivator.getLldpSecureKey();
+        } else {
+            finalKey = ManagementFactory.getRuntimeMXBean().getName();
+        }
+        final String pureValue = nodeConnectorId + finalKey;
+
+        final byte[] pureBytes = pureValue.getBytes();
+        HashFunction hashFunction = Hashing.md5();
+        Hasher hasher = hashFunction.newHasher();
+        HashCode hashedValue = hasher.putBytes(pureBytes).hash();
+        return hashedValue.asBytes();
+    }
+
+
+    public static boolean checkLatencyPacket(LatencyPacket lldp, NodeConnectorId srcNodeConnectorId) throws NoSuchAlgorithmException {
+        final LatencyPacketTLV hashLldptlv = lldp.getCustomTLV(
+                new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC[0]));
+        byte flag = (byte)0;
+        if (hashLldptlv != null && hashLldptlv.getType() == flag) {
+            
+            System.out.println("it is my packet!");
+            return true;
+        }
+
+        return false;
+    }
+}

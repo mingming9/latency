@@ -5,16 +5,15 @@
  * terms of the Eclipse Public License v1.0 which accompanies this distribution,
  * and is available at http://www.eclipse.org/legal/epl-v10.html
  */
-package org.opendaylight.latency.collection;
+package org.opendaylight.latency.impl;
 
-import java.util.concurrent.Future;
-
+import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutput;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 
-public interface LatencyRepo {
-	
-	public Long getCSLatency();
-	public Long getSSLatency();
-	public Future<RpcResult<Void>> execute();
-	
+import com.google.common.util.concurrent.ListenableFuture;
+
+public interface LatencyCallback {
+
+	ListenableFuture<RpcResult<NetworkLatencyOutput>> networklatencyreq(
+			NetworkLatencyOutput output);
 }

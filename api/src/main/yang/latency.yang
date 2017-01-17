@@ -7,53 +7,62 @@ module latency {
         description "Initial revision of latency model";
     }
     
-    identity latency-type {
-    	description
-    	"Base for latency types of ctr-sw latency and sw-sw latency";
+    typedef latency-type {
+    	type enumeration {
+    		enum CONTROLLERTOSWITCHES {
+    			description "detect latency between controller and switches";
+    		}
+    		enum SWITCHES {
+    			description "detect latency between switches";
+    		}
+    	}
     }
     
-    identity ctr-sw-latency {
-    	base latency-type;
-    	description "define latency type between controller and switches.";
-    }
-    
-    identity sw-sw-latency {
-    	base latency-type;
-    	description "define latency type between switches.";
-    }
-    
-    rpc latency {
+    rpc network-latency {
     	input {
     		leaf type {
-    			type string;
+    			type latency-type;
     		}
     	}
     	output {
     		list pairs {
-    			leaf src {
-    				type string;
+    			leaf a-dpId {
+    				type uint64;
     			}
-    			leaf dst {
-    				type string;
+    			leaf b-dpId {
+    				type uint64;
     			}
-    			leaf latency {
+    			leaf latency-time {
     				type uint32;
     			}
     		}
     	}
     }
     
-    rpc latency-request {
+    rpc switch-switch-latency {
     	input {
-    		leaf src-dpId {
-    			type string;
+    		leaf a-dpId {
+    			type uint64;
     		}
-    		leaf dst-dpId {
-    			type string;
+    		leaf b-dpId {
+    			type uint64;
     		}
     	}
     	output {
-    		leaf latency {
+    		leaf latency-time {
+    			type uint32;
+    		}
+    	}
+    }
+    
+    rpc controller-switch-latency {
+    	input {
+    		leaf switch-dpId {
+    			type uint64;
+    		}
+    	}
+    	output {
+    		leaf latency-time {
     			type uint32;
     		}
     	}

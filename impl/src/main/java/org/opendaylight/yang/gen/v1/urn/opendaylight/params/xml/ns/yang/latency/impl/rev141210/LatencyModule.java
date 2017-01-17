@@ -47,35 +47,7 @@ public class LatencyModule extends org.opendaylight.yang.gen.v1.urn.opendaylight
     	LatencyProvider latencyProvider = new LatencyProvider();
     	BindingAwareBroker broker = getBrokerDependency();
     	broker.registerProvider(latencyProvider);
-    	return latencyProvider;
-    	
+    	return latencyProvider;	
     }
-   /* public java.lang.AutoCloseable createInstance() {
-    	PacketProcessingService packetProcessingService = getRpcRegistryDependency().getRpcService(PacketProcessingService.class);
-        MacAddress macDestination = getAddressDestination();
-        final LLDPSpeaker lldpSpeaker = new LLDPSpeaker(packetProcessingService, Executors.newSingleThreadScheduledExecutor(), macDestination);
-        
-        LatencyProvider latencyProvider = new LatencyProvider(packetProcessingService, getDataBrokerDependency(), lldpSpeaker, macDestination);
-        final NodeConnectorInventoryEventTranslator eventTranslator = new NodeConnectorInventoryEventTranslator(
-                getDataBrokerDependency(), lldpSpeaker);
-
-       //OperationalStatusChangeService operationalStatusChangeService = new OperationalStatusChangeService(lldpSpeaker);
-        final BindingAwareBroker.RpcRegistration<LatencyService> latencyServiceRegistration =
-                getRpcRegistryDependency().addRpcImplementation(LatencyService.class, latencyProvider);
-        
-        NetworkLatency nl = new NetworkLatency(packetProcessingService, )
-        final NotificationProviderService nps = getNotificationServiceDependency().registerNotificationListener(nl);
-
-        
-        return new AutoCloseable() {
-            @Override
-            public void close() {
-                LOG.trace("Closing LLDP speaker.");
-                eventTranslator.close();
-                lldpSpeaker.close();
-                latencyServiceRegistration.close();
-            }
-        };
-    }*/
 
 }

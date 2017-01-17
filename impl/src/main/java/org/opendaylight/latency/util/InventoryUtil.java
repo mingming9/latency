@@ -71,12 +71,12 @@ public class InventoryUtil {
 	                .setConfiguration(new PortConfig(false, false, false, adminDown));
 	}
 	
-	public static NodeRef getNodeRef(NodeConnectorRef nodeConnectorRef) {
+	public static NodeRef getNodeRefFromNodeConnectorRef (NodeConnectorRef nodeConnectorRef) {
         InstanceIdentifier<Node> nodeIID = nodeConnectorRef.getValue().firstIdentifierOf(Node.class);
         return new NodeRef(nodeIID);
     }
 	
-	public static NodeRef getNodeRef(NodeId nodeId) {
+	public static NodeRef getNodeRefFromNodeId (NodeId nodeId) {
 		InstanceIdentifier<Node> nodeIId = InstanceIdentifier.builder(Nodes.class).child(Node.class, new NodeKey(nodeId)).build();
 		return new NodeRef(nodeIId);
 	}
@@ -86,6 +86,11 @@ public class InventoryUtil {
 		return ncId;
 	}
 	
+	public static NodeId getNodeIdFromNodeConnectorRef (NodeConnectorRef ref) {
+		NodeRef nodeRef = getNodeRefFromNodeConnectorRef(ref);
+		NodeId nodeId = nodeRef.getValue().firstKeyOf(Node.class, NodeKey.class).getId();
+		return nodeId;
+	}
 	public static Object readFlowCapableNodeConnectorFromNodeConnectorIId (InstanceIdentifier<NodeConnector> nodeConnectorIId, DataBroker dataBroker) {
 		Optional<?> optional = null;
 		try {
@@ -98,14 +103,14 @@ public class InventoryUtil {
 			e.printStackTrace();
 		}
         
-        System.out.println("FlowCapableNodeConnector is {}" + optional.get());
+       // System.out.println("FlowCapableNodeConnector is {}" + optional.get());
         return optional.get();
 		
 	}
 	
 	public static InstanceIdentifier<FlowCapableNodeConnector> constructFlowCapableNodeConnectorIId (InstanceIdentifier<NodeConnector> ncIId) {
 		InstanceIdentifier<FlowCapableNodeConnector> fcncIId = ncIId.augmentation(FlowCapableNodeConnector.class);
-		System.out.println("FlowCapableNodeConnectorIId is {}" + fcncIId);
+		//System.out.println("FlowCapableNodeConnectorIId is {}" + fcncIId);
 		return fcncIId;
 	}
 

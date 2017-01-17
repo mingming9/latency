@@ -8,6 +8,7 @@
 package org.opendaylight.latency.util;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.opendaylight.openflowjava.protocol.api.connection.ConnectionAdapter;
 import org.opendaylight.openflowplugin.api.openflow.md.core.ConnectionConductor;
@@ -23,6 +24,7 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731
 import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.EchoInputBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInputBuilder;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutput;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
 
 
@@ -65,9 +67,8 @@ public abstract class LatencyUtil {
         return input;
     }
 	
-	 protected static final InstanceIdentifier<Node> getNodeIId (InstanceIdentifier<?> nodeChild) {
+	protected static final InstanceIdentifier<Node> getNodeIId (InstanceIdentifier<?> nodeChild) {
 
 	        return nodeChild.firstIdentifierOf(Node.class);
-	    }
-	
+	}
 }

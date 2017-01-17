@@ -7,12 +7,14 @@
  */
 package org.opendaylight.latency.collection;
 
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.NodeConnectorEventsObserver;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
+import org.opendaylight.yangtools.yang.common.RpcResult;
 
 public class SwitchesLatency extends LLDPSpeaker implements LatencyRepo {
 
@@ -38,7 +40,8 @@ public class SwitchesLatency extends LLDPSpeaker implements LatencyRepo {
 	}
 
 	@Override
-	public void execute() {
+	public Future<RpcResult<Void>> execute() {
+		return null;
 		// TODO Auto-generated method stub
 		
 	}

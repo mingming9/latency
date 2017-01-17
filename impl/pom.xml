@@ -58,6 +58,11 @@ and is available at http://www.eclipse.org/legal/epl-v10.html
       <artifactId>model-inventory</artifactId>
       <version>${model.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.opendaylight.openflowplugin</groupId>
+      <artifactId>openflowplugin-impl</artifactId>
+      <version>${openflow.plugin.version}</version>
+    </dependency>
 
 
     
