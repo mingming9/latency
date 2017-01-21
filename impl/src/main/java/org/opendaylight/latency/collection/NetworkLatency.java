@@ -109,44 +109,24 @@ public class NetworkLatency implements LatencyRepo {
 			Long srcPortNo = srcflowCapableNodeConnector.getPortNumber().getUint32();
 			
 			//dst
-		//	NodeId dstNodeId = new NodeId(link.getDestination().getDestNode().getValue());
-		//	NodeRef dstNodeRef = InventoryUtil.getNodeRefFromNodeId(dstNodeId);
-		//	FlowCapableNode dstflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(dstNodeId, dataBroker);
-		//	IpAddress dstipAddress = srcflowCapableNode.getIpAddress();
 			NodeConnectorRef dstNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getDestination().getDestTp());
-		//	NodeConnectorId dstnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(dstNCRef);
 			InstanceIdentifier<NodeConnector> dstncIId = (InstanceIdentifier<NodeConnector>) dstNCRef.getValue();
 			FlowCapableNodeConnector dstflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(dstncIId, dataBroker);
-			MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();
-		//	Long dstPortNo = dstflowCapableNodeConnector.getPortNumber().getUint32();
+			MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();;
 			
-			//srclldp
+			//pktout
 			byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
 			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);	
-			futureSend = packetProcessingService.transmitPacket(srclldppkt);
 			Date srcdate = new Date();
- 		    Long srcpktOutTime = srcdate.getTime(); 	    
-            pktOutTimeMap.put(srcNCRef, srcpktOutTime);
+ 		    Long srcpktOutTime = srcdate.getTime(); 
+ 		    pktOutTimeMap.put(srcNCRef, srcpktOutTime);
+			futureSend = packetProcessingService.transmitPacket(srclldppkt);
+	    
+            
             LOG.info("size in pktout is " + pktOutTimeMap.size());	
-            //LOG.info("pkt out keyset is " + pktOutTimeMap.keySet());
-            //Thread.sleep(500);
-			
-             //dstlldp
- 			/*byte[] dstpayload = LatencyPacketUtil.buildLldpFrame(dstNodeId, dstnodeConnectorId, dstMac, dstPortNo, srcMac);
- 			TransmitPacketInput dstlldppkt = LatencyUtil.createPacketOut(dstpayload, dstNodeRef, dstNCRef);
- 			futureSend = packetProcessingService.transmitPacket(dstlldppkt);
- 			Date dstdate = new Date();
-		    Long dstpktOutTime = dstdate.getTime();
-            pktOutTimeMap.put(dstNCRef, dstpktOutTime);
-            LOG.info("dstpktOutTimeMap is {}", pktOutTimeMap);*/
-            //Thread.sleep(500);
 			
 		}
-		//Thread.sleep(1000);
-		//pktOutTimeMap.clear();
-/*		nlReg = nps.registerNotificationListener(pktInl);
-		pktInl.lReg = nlReg;*/
-		
+
 		return futureSend;
 		
 	}

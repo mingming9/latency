@@ -109,7 +109,6 @@ public class LatencyRpcImpl implements LatencyService{
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			System.out.println("NetworkLatency is finished");
 			latencyOutput = buildSwSwLatencyOutput();
 			LOG.info("finishing build output body");
 			
