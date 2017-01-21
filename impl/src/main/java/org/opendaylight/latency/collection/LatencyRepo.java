@@ -15,6 +15,6 @@ public interface LatencyRepo {
 	
 	public Long getCSLatency();
 	public Long getSSLatency();
-	public Future<RpcResult<Void>> execute();
+	public Future<RpcResult<Void>> execute() throws Exception;
 	
 }

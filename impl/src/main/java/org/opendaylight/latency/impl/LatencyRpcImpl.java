@@ -48,7 +48,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 
-public class LatencyRpcImpl implements LatencyService, LatencyCallback{
+public class LatencyRpcImpl implements LatencyService{
 	private static final Logger LOG = LoggerFactory.getLogger(LatencyProvider.class);
 	private PacketProcessingService packetProcessingService;
 	private ListenerRegistration<NotificationListener> nlReg;
@@ -56,17 +56,16 @@ public class LatencyRpcImpl implements LatencyService, LatencyCallback{
 	private NotificationProviderService nps;
 	private NetworkLatency nl;
 	private DataBroker dataBroker;
-	NetworkLatencyOutput latencyOutput;
+	private NetworkLatencyOutput latencyOutput;
 	private final ListeningExecutorService executor =
              MoreExecutors.listeningDecorator( Executors.newCachedThreadPool() );
-	private PacketInListener pktInListener;
 
 	
-	public LatencyRpcImpl(PacketProcessingService packetProcessingService, DataBroker dataBroker, NotificationProviderService nps) {
+	public LatencyRpcImpl(PacketProcessingService packetProcessingService, DataBroker dataBroker, NotificationProviderService nps, NetworkLatency nl) {
 		this.packetProcessingService = packetProcessingService;
 		this.dataBroker = dataBroker;
 		this.nps = nps;
-		
+		this.nl = nl;
 		// TODO Auto-generated constructor stub
 	}
 	
@@ -102,44 +101,31 @@ public class LatencyRpcImpl implements LatencyService, LatencyCallback{
 		LOG.info("NetworkLatecy detection is invorked");
 		LatencyType type = input.getType();
 		if (type.equals(LatencyType.SWITCHES)) {
-			nl = new NetworkLatency(packetProcessingService, dataBroker, nps);
-			Future<RpcResult<java.lang.Void>> future = nl.execute();
+			
+			try {
+				nl = new NetworkLatency(packetProcessingService, dataBroker);
+				Future<RpcResult<java.lang.Void>> future = nl.execute();
+			/*	PacketInListener pktInl = new PacketInListener(nl);
+				nlReg = nps.registerNotificationListener(pktInl);
+				pktInl.lReg = nlReg;*/
+				
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.out.println("NetworkLatency is finished");
-			
-			/*pktInListener = new PacketInListener(nl);
-			nlReg = nps.registerNotificationListener(pktInListener);
-			pktInListener.lReg = nlReg;*/
-			
-			
 			latencyOutput = buildSwSwLatencyOutput();
 			LOG.info("finishing build output body");
 			
-			//nlReg.close();
-			//nl.pktOutTimeMap.clear();
 			return Futures.<RpcResult<NetworkLatencyOutput>>immediateFuture(
 					RpcResultBuilder.<NetworkLatencyOutput>success().withResult(latencyOutput).build());
-		/*	//final ListenableFuture<RpcResult<NetworkLatencyOutput>> resultFuture = nl.futureSend;
-			ListenableFuture<RpcResult<Void>> listenablefuture= JdkFutureAdapters.listenInPoolThread(future);*/
 			
 		
 	}
 		return Futures.<RpcResult<NetworkLatencyOutput>>immediateFuture(
 				RpcResultBuilder.<NetworkLatencyOutput>success().withResult(latencyOutput).build());
 	}
-	
-	@Override
-	public ListenableFuture<RpcResult<NetworkLatencyOutput>> networklatencyreq (final NetworkLatencyOutput output) {
 
-
-		return executor.submit( new Callable<RpcResult<NetworkLatencyOutput>>() {
-
-            @Override
-            public RpcResult<NetworkLatencyOutput> call() throws Exception {
-            	
-                return RpcResultBuilder.<NetworkLatencyOutput>success().withResult(output).build();
-            }
-        } );        
-    }
 	
 	
 	@Override

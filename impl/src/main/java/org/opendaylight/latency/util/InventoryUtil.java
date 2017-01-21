@@ -13,6 +13,7 @@ import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.md.sal.binding.api.ReadOnlyTransaction;
 import org.opendaylight.controller.md.sal.common.api.data.LogicalDatastoreType;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNode;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNodeConnector;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNodeConnectorBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.types.port.rev130925.PortConfig;
@@ -28,8 +29,12 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.No
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.Node;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.NodeKey;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.model.topology.inventory.rev131030.InventoryNode;
+import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NetworkTopology;
+import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.TopologyId;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.Topology;
+import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.TopologyKey;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
+import org.opendaylight.yangtools.yang.binding.InstanceIdentifier.InstanceIdentifierBuilder;
 
 import com.google.common.base.Optional;
 
@@ -102,16 +107,35 @@ public class InventoryUtil {
 		} catch (ExecutionException e) {
 			e.printStackTrace();
 		}
-        
-       // System.out.println("FlowCapableNodeConnector is {}" + optional.get());
         return optional.get();
 		
 	}
 	
 	public static InstanceIdentifier<FlowCapableNodeConnector> constructFlowCapableNodeConnectorIId (InstanceIdentifier<NodeConnector> ncIId) {
 		InstanceIdentifier<FlowCapableNodeConnector> fcncIId = ncIId.augmentation(FlowCapableNodeConnector.class);
-		//System.out.println("FlowCapableNodeConnectorIId is {}" + fcncIId);
 		return fcncIId;
 	}
-
+	
+	public static Object readFlowCapableNodeFromNodeId (NodeId nodeId, DataBroker dataBroker) {
+		Optional<?> optional = null;
+		try {
+			InstanceIdentifier<FlowCapableNode> fcdIId = constructFlowCapableNodeIId(nodeId);
+			ReadOnlyTransaction rx = dataBroker.newReadOnlyTransaction();
+			optional = rx.read(LogicalDatastoreType.OPERATIONAL, fcdIId).get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+		return optional.get();
+	}
+	public static InstanceIdentifier<FlowCapableNode> constructFlowCapableNodeIId(
+			NodeId nodeId) {
+		InstanceIdentifier<Node> nodeIId = createNodeIId(nodeId);
+		return nodeIId.augmentation(FlowCapableNode.class);
+	}
+	
+	public static InstanceIdentifier<Node> createNodeIId(NodeId nodeId) {
+		return InstanceIdentifier.builder(Nodes.class).child(Node.class, new NodeKey(new NodeId(nodeId))).build();
+	}
 }

@@ -26,16 +26,19 @@ import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFaile
 import org.opendaylight.controller.sal.binding.api.BindingAwareBroker.ProviderContext;
 import org.opendaylight.controller.sal.binding.api.BindingAwareProvider;
 import org.opendaylight.controller.sal.binding.api.NotificationProviderService;
+import org.opendaylight.latency.echo.EchoMsg;
 import org.opendaylight.latency.impl.LatencyProvider;
+import org.opendaylight.latency.ping.Ping;
 import org.opendaylight.latency.util.InventoryUtil;
 import org.opendaylight.latency.util.LatencyPacketUtil;
 import org.opendaylight.latency.util.LatencyUtil;
-
 import org.opendaylight.latency.util.TopologyUtil;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
 import org.opendaylight.openflowplugin.applications.lldpspeaker.NodeConnectorEventsObserver;
 import org.opendaylight.openflowplugin.applications.topology.lldp.utils.LLDPDiscoveryUtils;
+import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.inet.types.rev100924.IpAddress;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNode;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNodeConnector;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorRef;
@@ -65,7 +68,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class NetworkLatency implements LatencyRepo {
 	private static final Logger LOG = LoggerFactory.getLogger(NetworkLatency.class);
-	public Map<NodeConnectorRef, Long> pktOutTimeMap = new ConcurrentHashMap<>();
+	public static Map<NodeConnectorRef, Long> pktOutTimeMap = new ConcurrentHashMap<>();
 	private PacketProcessingService packetProcessingService;
 	private DataBroker dataBroker;
 	public static String TOPO_ID = "flow:1";
@@ -73,88 +76,75 @@ public class NetworkLatency implements LatencyRepo {
 	public ListenableFuture<RpcResult<java.lang.Void>> listenablefuture;
 	public Future<RpcResult<Void>> futureSend;
 	private ListenerRegistration<NotificationListener> nlReg;
-	private PacketInListener pktInl;
+	//private PacketInListener pktInl;
 	private NotificationProviderService nps;
 	private NetworkLatency nl;
 	
 	
 	
 	public NetworkLatency(PacketProcessingService pps,
-			DataBroker dataBroker, NotificationProviderService nps) {
+			DataBroker dataBroker) {
 		this.packetProcessingService = pps;
 		this.dataBroker = dataBroker;
-		this.nps = nps;
-		this.pktInl = new PacketInListener(NetworkLatency.this);
+		
 	}
 
 	@Override
-	public Future<RpcResult<java.lang.Void>> execute() {
+	public Future<RpcResult<java.lang.Void>> execute() throws Exception {
 		System.out.println("NetworkLatency is running");
 		InstanceIdentifier<Topology> topoIId = TopologyUtil.createTopoIId(TOPO_ID);
 		Topology topo = (Topology) TopologyUtil.readTopo(topoIId,dataBroker);
-		//System.out.println("NetworkLatency topo is" + topo);
 		List<Link> linkList = topo.getLink();
-		//System.out.println("NetworkLatency links are" + linkList);
 		for(Link link : linkList) {
-			//System.out.println("NetworkLatency link is" + link);
 			//src
 			NodeId srcNodeId = new NodeId(link.getSource().getSourceNode().getValue());
 			NodeRef srcNodeRef = InventoryUtil.getNodeRefFromNodeId(srcNodeId);
+			FlowCapableNode srcflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(srcNodeId, dataBroker);
+			IpAddress srcipAddress = srcflowCapableNode.getIpAddress();
 			NodeConnectorRef srcNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getSource().getSourceTp());
 			NodeConnectorId srcnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(srcNCRef);
 			InstanceIdentifier<NodeConnector> srcncIId = (InstanceIdentifier<NodeConnector>) srcNCRef.getValue();
-			FlowCapableNodeConnector srcflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(srcncIId, dataBroker);
-			//System.out.println("srcFlowCapableNodeConnector is {}" + srcflowCapableNodeConnector);
+			FlowCapableNodeConnector srcflowCapableNodeConnector = (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(srcncIId, dataBroker);
 			MacAddress srcMac = srcflowCapableNodeConnector.getHardwareAddress();
-			//System.out.println("srcMac is {}" + srcMac);
 			Long srcPortNo = srcflowCapableNodeConnector.getPortNumber().getUint32();
-			//System.out.println("srcPortNo is {}" + srcPortNo);
 			
 			//dst
 			NodeId dstNodeId = new NodeId(link.getDestination().getDestNode().getValue());
 			NodeRef dstNodeRef = InventoryUtil.getNodeRefFromNodeId(dstNodeId);
+			FlowCapableNode dstflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(dstNodeId, dataBroker);
+			IpAddress dstipAddress = srcflowCapableNode.getIpAddress();
 			NodeConnectorRef dstNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getDestination().getDestTp());
 			NodeConnectorId dstnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(dstNCRef);
 			InstanceIdentifier<NodeConnector> dstncIId = (InstanceIdentifier<NodeConnector>) dstNCRef.getValue();
 			FlowCapableNodeConnector dstflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(dstncIId, dataBroker);
-			//System.out.println("dstflowCapableNodeConnector is {}" + dstflowCapableNodeConnector);
 			MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();
-			//System.out.println("dstMac is {}" + dstMac);
 			Long dstPortNo = dstflowCapableNodeConnector.getPortNumber().getUint32();
-			//System.out.println("dstPortNo is {}" + dstPortNo);
 			
 			//srclldp
 			byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
-			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);			
-			//System.out.println("srclldppkt is {}" + srclldppkt);
+			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);	
 			futureSend = packetProcessingService.transmitPacket(srclldppkt);
-			
-			/*final ListenableFuture<Void> commitFuture =
-		            Futures.transform( readFuture, (AsyncFunction<Optional<Toaster>, Void>) toasterData -> */
-			//ListenableFuture<RpcResult<?>> = handleServiceCall(srclldppkt);
-			//System.out.println("srcPktout succeed");
 			Date srcdate = new Date();
- 		    Long srcpktOutTime = srcdate.getTime();            
-            //System.out.println("NodeConnector:"+ dstNCRef + ", packet_out is sent at" + srcpktOutTime);
-            pktOutTimeMap.put(dstNCRef, srcpktOutTime);             
-            System.out.println("NodeConnector:"+ srcnodeConnectorId + ", packet_out is sent at" + srcpktOutTime);
+ 		    Long srcpktOutTime = srcdate.getTime(); 	    
+            pktOutTimeMap.put(srcNCRef, srcpktOutTime);
+            LOG.info("srcpktOutTimeMap is {}", pktOutTimeMap);	
+            //Thread.sleep(500);
 			
              //dstlldp
  			byte[] dstpayload = LatencyPacketUtil.buildLldpFrame(dstNodeId, dstnodeConnectorId, dstMac, dstPortNo, srcMac);
- 			TransmitPacketInput dstlldppkt = LatencyUtil.createPacketOut(dstpayload, srcNodeRef, srcNCRef);
- 			//System.out.println("dstlldppkt is {}" + dstlldppkt);
+ 			TransmitPacketInput dstlldppkt = LatencyUtil.createPacketOut(dstpayload, dstNodeRef, dstNCRef);
  			futureSend = packetProcessingService.transmitPacket(dstlldppkt);
- 		    //System.out.println("srcPktout succeed");
- 		    Date dstdate = new Date();
-		    Long dstpktOutTime = dstdate.getTime();             
-            //System.out.println("NodeConnector:"+ dstNCRef + ", packet_out is sent at" + dstpktOutTime);
-            pktOutTimeMap.put(dstNCRef, dstpktOutTime);             
-            System.out.println("NodeConnector:"+ dstnodeConnectorId + ", packet_out is sent at" + dstpktOutTime);
+ 			Date dstdate = new Date();
+		    Long dstpktOutTime = dstdate.getTime();
+            pktOutTimeMap.put(dstNCRef, dstpktOutTime);
+            LOG.info("dstpktOutTimeMap is {}", pktOutTimeMap);
+            //Thread.sleep(500);
 			
 		}
-		nlReg = nps.registerNotificationListener(pktInl);
-		pktInl.lReg = nlReg;
-		//System.out.println("pktoutmap is "+ pktOutTimeMap);
+		//Thread.sleep(1000);
+		//pktOutTimeMap.clear();
+/*		nlReg = nps.registerNotificationListener(pktInl);
+		pktInl.lReg = nlReg;*/
 		return futureSend;
 		
 	}

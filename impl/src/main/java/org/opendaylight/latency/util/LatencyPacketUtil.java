@@ -17,11 +17,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.opendaylight.controller.liblldp.EtherTypes;
 import org.opendaylight.controller.liblldp.Ethernet;
 import org.opendaylight.controller.liblldp.HexEncode;
-//import org.opendaylight.controller.liblldp.LLDP;
-//import org.opendaylight.controller.liblldp.LLDPTLV;
+import org.opendaylight.controller.liblldp.LLDP;
+import org.opendaylight.controller.liblldp.LLDPTLV;
 import org.opendaylight.controller.liblldp.PacketException;
-import org.opendaylight.latency.packet.LatencyPacket;
-import org.opendaylight.latency.packet.LatencyPacketTLV;
+//import org.opendaylight.latency.packet.LLDP;
+//import org.opendaylight.latency.packet.LLDPTLV;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
@@ -37,65 +37,77 @@ public final class LatencyPacketUtil {
             final NodeConnectorId nodeConnectorId, final MacAddress src, final Long outPortNo,
             final MacAddress destinationAddress) {
         // Create discovery pkt
-    	LatencyPacket discoveryPkt = new LatencyPacket();
+    	LLDP discoveryPkt = new LLDP();
 
         // Create LLDP ChassisID TLV
         BigInteger dataPathId = dataPathIdFromNodeId(nodeId);
-        byte[] cidValue = LatencyPacketTLV
+        byte[] cidValue = LLDPTLV
                 .createChassisIDTLVValue(colonize(bigIntegerToPaddedHex(dataPathId)));
-        LatencyPacketTLV chassisIdTlv = new LatencyPacketTLV();
-        chassisIdTlv.setType(LatencyPacketTLV.TLVType.ChassisID.getValue());
-        chassisIdTlv.setType(LatencyPacketTLV.TLVType.ChassisID.getValue())
+        LLDPTLV chassisIdTlv = new LLDPTLV();
+        chassisIdTlv.setType(LLDPTLV.TLVType.ChassisID.getValue());
+        chassisIdTlv.setType(LLDPTLV.TLVType.ChassisID.getValue())
                 .setLength((short) cidValue.length).setValue(cidValue);
         discoveryPkt.setChassisId(chassisIdTlv);
 
         // Create LLDP PortID TL
         String hexString = Long.toHexString(outPortNo);
-        byte[] pidValue = LatencyPacketTLV.createPortIDTLVValue(hexString);
-        LatencyPacketTLV portIdTlv = new LatencyPacketTLV();
-        portIdTlv.setType(LatencyPacketTLV.TLVType.PortID.getValue())
+        byte[] pidValue = LLDPTLV.createPortIDTLVValue(hexString);
+        LLDPTLV portIdTlv = new LLDPTLV();
+        portIdTlv.setType(LLDPTLV.TLVType.PortID.getValue())
                 .setLength((short) pidValue.length).setValue(pidValue);
-        portIdTlv.setType(LatencyPacketTLV.TLVType.PortID.getValue());
+        portIdTlv.setType(LLDPTLV.TLVType.PortID.getValue());
         discoveryPkt.setPortId(portIdTlv);
 
         // Create LLDP TTL TLV
         byte[] ttl = new byte[] { (byte) 0x13, (byte) 0x37 };
-        LatencyPacketTLV ttlTlv = new LatencyPacketTLV();
-        ttlTlv.setType(LatencyPacketTLV.TLVType.TTL.getValue())
+        LLDPTLV ttlTlv = new LLDPTLV();
+        ttlTlv.setType(LLDPTLV.TLVType.TTL.getValue())
                 .setLength((short) ttl.length).setValue(ttl);
         discoveryPkt.setTtl(ttlTlv);
 
         // Create LLDP SystemName TLV
-        byte[] snValue = LatencyPacketTLV.createSystemNameTLVValue(nodeId.getValue());
-        LatencyPacketTLV systemNameTlv = new LatencyPacketTLV();
-        systemNameTlv.setType(LatencyPacketTLV.TLVType.SystemName.getValue());
-        systemNameTlv.setType(LatencyPacketTLV.TLVType.SystemName.getValue())
+        byte[] snValue = LLDPTLV.createSystemNameTLVValue(nodeId.getValue());
+        LLDPTLV systemNameTlv = new LLDPTLV();
+        systemNameTlv.setType(LLDPTLV.TLVType.SystemName.getValue());
+        systemNameTlv.setType(LLDPTLV.TLVType.SystemName.getValue())
                 .setLength((short) snValue.length).setValue(snValue);
         discoveryPkt.setSystemNameId(systemNameTlv);
 
         // Create LLDP Custom TLV
-        byte[] customValue = LatencyPacketTLV.createCustomTLVValue(nodeConnectorId
+        byte[] customValue = LLDPTLV.createCustomTLVValue(nodeConnectorId
                 .getValue());
-        LatencyPacketTLV customTlv = new LatencyPacketTLV();
-        customTlv.setType(LatencyPacketTLV.TLVType.Custom.getValue())
+        LLDPTLV customTlv = new LLDPTLV();
+        customTlv.setType(LLDPTLV.TLVType.Custom.getValue())
                 .setLength((short) customValue.length).setValue(customValue);
         discoveryPkt.addCustomTLV(customTlv);
 
         //Create LLDP CustomSec TLV
-        byte[] pureValue = new byte[1];
+        /*byte[] pureValue = new byte[1];
         try {
             pureValue = getValueForLLDPPacketIntegrityEnsuring(nodeConnectorId);
-            byte[] customSecValue = LatencyPacketTLV.createCustomTLVValue(CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC, pureValue);
-            LatencyPacketTLV customSecTlv = new LatencyPacketTLV();
-            customSecTlv.setType(LatencyPacketTLV.TLVType.Unknown.getValue())
+            byte[] customSecValue = LLDPTLV.createCustomTLVValue(CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC, pureValue);
+            LLDPTLV customSecTlv = new LLDPTLV();
+            customSecTlv.setType(LLDPTLV.TLVType.Custom.getValue())
             .setLength((short)customSecValue.length)
             .setValue(customSecValue);
             discoveryPkt.addCustomTLV(customSecTlv);
-            System.out.println("custonSecTlv type is " + customSecTlv.getType());
         } catch (NoSuchAlgorithmException e1) {
             LOG.info("LLDP extra authenticator creation failed: {}", e1.getMessage());
             LOG.debug("Reason why LLDP extra authenticator creation failed: ", e1);
-        }
+        }*/
+        
+        //Create Latency Test Custom TLV
+        String latency = "latency";
+        byte[] latencybyte = new byte[1];
+        latencybyte = latency.getBytes();
+        byte[] latencyValue = LLDPTLV.createCustomTLVValue(CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC, latencybyte);
+        LLDPTLV latencyTLV = new LLDPTLV();
+        latencyTLV.setType(LLDPTLV.TLVType.Custom.getValue())
+        .setLength((short)latencyValue.length)
+        .setValue(latencyValue);
+        discoveryPkt.addCustomTLV(latencyTLV);
+       
+        
 
 
         // Create ethernet pkt
@@ -105,7 +117,7 @@ public final class LatencyPacketUtil {
                 .setEtherType(EtherTypes.LLDP.shortValue())
                 .setPayload(discoveryPkt);
         if (destinationAddress == null) {
-            ethPkt.setDestinationMACAddress(LatencyPacket.LLDPMulticastMac);
+            ethPkt.setDestinationMACAddress(LLDP.LLDPMulticastMac);
         } else {
             ethPkt.setDestinationMACAddress(HexEncode
                     .bytesFromHexString(destinationAddress.getValue()));

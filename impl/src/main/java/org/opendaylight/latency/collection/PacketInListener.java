@@ -20,7 +20,6 @@ import java.util.concurrent.Executors;
 
 import org.opendaylight.controller.liblldp.Ethernet;
 import org.opendaylight.controller.liblldp.NetUtils;
-import org.opendaylight.latency.impl.LatencyCallback;
 import org.opendaylight.latency.util.InventoryUtil;
 import org.opendaylight.latency.util.LatencyPacketParserUtil;
 import org.opendaylight.latency.util.LatencyUtil;
@@ -53,11 +52,11 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
 	private Map<String, Long> outputmap = new ConcurrentHashMap<>();
 	private Map<Long, Integer> index;
 	private Map<Integer, Long> timeStore;
-	private List<NodeConnectorRef> srcnclist = new ArrayList<>();
-	private List<NodeConnectorRef> dstnclist = new ArrayList<>();
+//	private List<NodeConnectorRef> srcnclist = new ArrayList<>();
+//	private List<NodeConnectorRef> dstnclist = new ArrayList<>();
 	private List<Long> lldptimelist = new ArrayList<>();
-	private NetworkLatencyOutput output;
-	private int size = 0;
+	//private NetworkLatencyOutput output;
+	//private int size;
 	private NetworkLatency nl;
 	public ListenerRegistration<NotificationListener> lReg = null;
 	private boolean closeFlag = false;
@@ -79,50 +78,40 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
 	@Override
 	public void onPacketReceived(PacketReceived latencyPkt) {
 		LOG.info("Latency onPacketReceived is invorked");
-		
-        	int mapSize = nl.pktOutTimeMap.size();
-        	NodeConnectorRef src = LLDPDiscoveryUtils.lldpToNodeConnectorRef(latencyPkt.getPayload(),true);
-        	NodeConnectorRef dst = latencyPkt.getIngress();
-        	LOG.info("NodeConnectorRef is {}" , src);
-        	if (src != null && nl.pktOutTimeMap.containsKey(src) && size < mapSize) {
-        		LOG.info("enter pktOutTime look up");
-			
-        		Date srcdate = new Date();
-        		Long srctime = srcdate.getTime();
-        		Long lldptime = srctime - nl.pktOutTimeMap.get(src);
-        		lldptimelist.add(lldptime);
-        		srcnclist.add(src);
-        		dstnclist.add(dst);
-        		System.out.println("latencyPkt time is " + lldptime);
-        		size ++;
-        	}
-        	if (size == nl.pktOutTimeMap.size() && !srcnclist.isEmpty() && !dstnclist.isEmpty() && !lldptimelist.isEmpty()) {
-        		System.out.println("srclist is " + srcnclist);
-        		System.out.println("dstlist is " + dstnclist);
-        		System.out.println("lldptime is " + lldptimelist);
-        		ConstructRpcOutput construct = new ConstructRpcOutput(srcnclist, dstnclist, lldptimelist);
-        		output = construct.getSwSwLatencyOutput();
-        		System.out.println("output is " + output);
-        		nl.pktOutTimeMap.clear();
-        		lldptimelist.clear();
-        		srcnclist.clear();
-        		dstnclist.clear();
-        		System.out.println("I think pktOutTimeMap is cleared" + nl.pktOutTimeMap);
-        		lReg.close();
-        		size = 0;
-        		System.out.println("size is " + size);
-        	} else       {
-			closeFlag = true;
+		if (LatencyPacketParserUtil.checkLatencyPacket(latencyPkt.getPayload())) {
+		NodeConnectorRef src = LatencyPacketParserUtil.lldpToNodeConnectorRef(latencyPkt.getPayload(),false);
+		LOG.info("src is " + src);
+		Map<NodeConnectorRef, Long> la = nl.pktOutTimeMap;
+		LOG.info("pktoutTime map is" + la);
+        	if (src != null && nl.pktOutTimeMap.containsKey(src)) {
+        		LOG.info("I got it!");	
+        		Date date = new Date();
+        		Long srcTime = date.getTime();
+        		LOG.info("I got pktin at {}", srcTime);
+        		
+        		Long lldpTime = srcTime - nl.pktOutTimeMap.get(src);
+        		System.out.println("lldp round time is " + lldpTime);
+        		lldptimelist.add(lldpTime);
+        		NodeConnectorRef dst = latencyPkt.getIngress();
+        		NodeId srcNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(src);
+        		BigInteger srcdpId = LatencyUtil.getDpId(srcNodeId);
+        		NodeId dstNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(dst);
+        		BigInteger dstdpId = LatencyUtil.getDpId(dstNodeId);
+        		System.out.println("latencyPkt time from " + srcdpId + "to " + dstdpId + "is " + lldpTime);
+        	} /*if (size == nl.getTimeMap().size()) {
+        			
+        			nl.pktOutTimeMap.clear();
+            		lldptimelist.clear();
+            //		srcnclist.clear();
+            //		dstnclist.clear();
+            		size = 0;
+            		System.out.println("PacketInListener finished!");
+        		}*/
 		}
+		
     }
 	
 
-	
-	public void passRpcResult (LatencyCallback callback) {
-		if(output != null) {
-			callback.networklatencyreq(output);
-		} 		
-	}
 	@Override
 	public void close() throws Exception {
 		if (closeFlag){

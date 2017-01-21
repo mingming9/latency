@@ -14,22 +14,15 @@ import java.nio.charset.Charset;
 import com.google.common.hash.HashCode;
 
 import org.opendaylight.controller.liblldp.Ethernet;
+import org.opendaylight.controller.liblldp.LLDP;
 import org.opendaylight.controller.liblldp.BitBufferHelper;
-//import org.opendaylight.controller.liblldp.LLDP;
-//import org.opendaylight.controller.liblldp.LLDPTLV;
+import org.opendaylight.controller.liblldp.LLDPTLV;
 import org.opendaylight.controller.liblldp.NetUtils;
 
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import com.google.common.hash.HashFunction;
 
-
-
-
-import org.opendaylight.latency.packet.LatencyPacket;
-import org.opendaylight.latency.packet.LatencyPacketTLV;
-//import org.opendaylight.latency.packet.LLDP;
-//import org.opendaylight.latency.packet.LLDPTLV;
 import org.opendaylight.openflowplugin.applications.topology.lldp.LLDPActivator;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorRef;
@@ -44,6 +37,8 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.No
 
 import java.lang.management.ManagementFactory;
 
+import jline.internal.Log;
+
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.Node;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.NodeKey;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
@@ -51,11 +46,8 @@ import org.opendaylight.controller.liblldp.CustomTLVKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 public class LatencyPacketParserUtil {
-
-
-
-
     private static final Logger LOG = LoggerFactory.getLogger(LatencyPacketParserUtil.class);
 
     // Send LLDP every five seconds
@@ -73,13 +65,21 @@ public class LatencyPacketParserUtil {
         return b.toString();
     }
 
-
-    public static NodeConnectorRef pktToNodeConnectorRef(byte[] payload)  {
-        return pktToNodeConnectorRef(payload, false);
+    /**
+     * @param payload
+     * @return nodeConnectorId - encoded in custom TLV of given lldp
+     * @see LatencyPacketParserUtil#lldpToNodeConnectorRef(byte[], boolean)
+     */
+    public static NodeConnectorRef lldpToNodeConnectorRef(byte[] payload)  {
+        return lldpToNodeConnectorRef(payload, false);
     }
 
-
-    public static NodeConnectorRef pktToNodeConnectorRef(byte[] payload, boolean useExtraAuthenticatorCheck)  {
+    /**
+     * @param payload
+     * @param useExtraAuthenticatorCheck make it more secure (CVE-2015-1611 CVE-2015-1612)
+     * @return nodeConnectorId - encoded in custom TLV of given lldp
+     */
+    public static NodeConnectorRef lldpToNodeConnectorRef(byte[] payload, boolean useExtraAuthenticatorCheck)  {
         Ethernet ethPkt = new Ethernet();
         try {
             ethPkt.deserialize(payload, 0,payload.length * NetUtils.NumBitsInAByte);
@@ -89,14 +89,14 @@ public class LatencyPacketParserUtil {
 
         NodeConnectorRef nodeConnectorRef = null;
 
-        if (ethPkt.getPayload() instanceof LatencyPacket) {
-        	LatencyPacket lldp = (LatencyPacket) ethPkt.getPayload();
+        if (ethPkt.getPayload() instanceof LLDP) {
+            LLDP lldp = (LLDP) ethPkt.getPayload();
 
             try {
                 NodeId srcNodeId = null;
                 NodeConnectorId srcNodeConnectorId = null;
 
-                final LatencyPacketTLV systemIdTLV = lldp.getSystemNameId();
+                final LLDPTLV systemIdTLV = lldp.getSystemNameId();
                 if (systemIdTLV != null) {
                     String srcNodeIdString = new String(systemIdTLV.getValue(),Charset.defaultCharset());
                     srcNodeId = new NodeId(srcNodeIdString);
@@ -104,17 +104,17 @@ public class LatencyPacketParserUtil {
                     throw new Exception("Node id wasn't specified via systemNameId in LLDP packet.");
                 }
 
-                final LatencyPacketTLV nodeConnectorIdLldptlv = lldp.getCustomTLV(
-                        new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_NODE_CONNECTOR_ID[0]));
+                final LLDPTLV nodeConnectorIdLldptlv = lldp.getCustomTLV(
+                        new CustomTLVKey(BitBufferHelper.getInt(LLDPTLV.OFOUI), LLDPTLV.CUSTOM_TLV_SUB_TYPE_NODE_CONNECTOR_ID[0]));
                 if (nodeConnectorIdLldptlv != null) {
-                    srcNodeConnectorId = new NodeConnectorId(LatencyPacketTLV.getCustomString(
+                    srcNodeConnectorId = new NodeConnectorId(LLDPTLV.getCustomString(
                             nodeConnectorIdLldptlv.getValue(), nodeConnectorIdLldptlv.getLength()));
                 } else {
                     throw new Exception("Node connector wasn't specified via Custom TLV in LLDP packet.");
                 }
 
                 if (useExtraAuthenticatorCheck) {
-                    boolean secure = checkLatencyPacket(lldp, srcNodeConnectorId);
+                    boolean secure = checkExtraAuthenticator(lldp, srcNodeConnectorId);
                     if (! secure) {
                         LOG.warn("SECURITY ALERT: there is probably a LLDP spoofing attack in progress.");
                         throw new Exception("Attack. LLDP packet with inconsistent extra authenticator field was received.");
@@ -133,38 +133,11 @@ public class LatencyPacketParserUtil {
         return nodeConnectorRef;
     }
 
-
-    public static boolean checkLatency(byte[] payload) {
-        Ethernet ethPkt = new Ethernet();
-        try {
-            ethPkt.deserialize(payload, 0,payload.length * NetUtils.NumBitsInAByte);
-        } catch (Exception e) {
-            LOG.warn("Failed to decode LLDP packet {}", e);
-        }
-        NodeConnectorId srcNodeConnectorId = null;
-        boolean latencyFlag = false;
-
-        if (ethPkt.getPayload() instanceof LatencyPacket) {
-        	LatencyPacket lldp = (LatencyPacket) ethPkt.getPayload();
-            try {
-
-                final LatencyPacketTLV nodeConnectorIdLldptlv = lldp.getCustomTLV(
-                        new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_NODE_CONNECTOR_ID[0]));
-                if (nodeConnectorIdLldptlv != null) {
-                    srcNodeConnectorId = new NodeConnectorId(LatencyPacketTLV.getCustomString(
-                            nodeConnectorIdLldptlv.getValue(), nodeConnectorIdLldptlv.getLength()));
-                    latencyFlag = checkLatencyPacket(lldp, srcNodeConnectorId);
-                } else {
-                    throw new Exception("Node connector wasn't specified via Custom TLV in LLDP packet.");
-                } 
-            } catch (Exception e) {
-                    LOG.debug("Caught exception while parsing out lldp optional and custom fields: {}", e.getMessage(), e);
-                }
-            }
-		return latencyFlag;
-    	
-    }
-    
+    /**
+     * @param nodeConnectorId
+     * @return extra authenticator for lldp security
+     * @throws NoSuchAlgorithmException
+     */
     public static byte[] getValueForLLDPPacketIntegrityEnsuring(final NodeConnectorId nodeConnectorId) throws NoSuchAlgorithmException {
         String finalKey;
         if(LLDPActivator.getLldpSecureKey() !=null && !LLDPActivator.getLldpSecureKey().isEmpty()) {
@@ -181,17 +154,56 @@ public class LatencyPacketParserUtil {
         return hashedValue.asBytes();
     }
 
-
-    public static boolean checkLatencyPacket(LatencyPacket lldp, NodeConnectorId srcNodeConnectorId) throws NoSuchAlgorithmException {
-        final LatencyPacketTLV hashLldptlv = lldp.getCustomTLV(
-                new CustomTLVKey(BitBufferHelper.getInt(LatencyPacketTLV.OFOUI), LatencyPacketTLV.CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC[0]));
-        byte flag = (byte)0;
-        if (hashLldptlv != null && hashLldptlv.getType() == flag) {
-            
-            System.out.println("it is my packet!");
-            return true;
+    /**
+     * @param lldp
+     * @param srcNodeConnectorId
+     * @throws NoSuchAlgorithmException
+     */
+    private static boolean checkExtraAuthenticator(LLDP lldp, NodeConnectorId srcNodeConnectorId) throws NoSuchAlgorithmException {
+        final LLDPTLV hashLldptlv = lldp.getCustomTLV(
+                new CustomTLVKey(BitBufferHelper.getInt(LLDPTLV.OFOUI), LLDPTLV.CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC[0]));
+        boolean secAuthenticatorOk = false;
+        if (hashLldptlv != null) {
+            byte[] rawTlvValue = hashLldptlv.getValue();
+            byte[] lldpCustomSecurityHash = ArrayUtils.subarray(rawTlvValue, 4, rawTlvValue.length);
+            byte[] calculatedHash = getValueForLLDPPacketIntegrityEnsuring(srcNodeConnectorId);
+            secAuthenticatorOk = Arrays.equals(calculatedHash, lldpCustomSecurityHash);
+        } else {
+            LOG.debug("Custom security hint wasn't specified via Custom TLV in LLDP packet.");
         }
 
-        return false;
+        return secAuthenticatorOk;
     }
+    
+    public static boolean checkLatencyPacket(byte[] payload) {
+    	Ethernet ethPkt = new Ethernet();
+    	boolean isLatencyPkt = false;
+        try {
+            ethPkt.deserialize(payload, 0,payload.length * NetUtils.NumBitsInAByte);
+        } catch (Exception e) {
+            LOG.warn("Failed to decode LLDP packet {}", e);
+        }
+        
+        if (ethPkt.getPayload() instanceof LLDP) {
+            LLDP lldp = (LLDP) ethPkt.getPayload();
+            final LLDPTLV hashLldptlv = lldp.getCustomTLV(
+                new CustomTLVKey(BitBufferHelper.getInt(LLDPTLV.OFOUI), LLDPTLV.CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC[0]));
+            //System.out.println("I got the customized hashLldptlv " + hashLldptlv);
+            if (hashLldptlv != null) {
+            	byte[] rawTlvValue = hashLldptlv.getValue();
+            	String rawValue = LLDPTLV.getCustomString(rawTlvValue, hashLldptlv.getLength());
+            	LOG.info("I got the customized rawValue {} ", rawValue);
+            	String checkout = "latency";
+            	LOG.info("the latency string is {}", checkout);
+            	if (rawValue.equals(checkout)) {
+            		isLatencyPkt = true;
+            	}
+            } else {
+            	LOG.debug("Custom security hint wasn't specified via Custom TLV in LLDP packet.");
+            }
+        }
+
+        return isLatencyPkt;
+    }
+
 }
