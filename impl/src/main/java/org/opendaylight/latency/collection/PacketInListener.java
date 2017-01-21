@@ -52,9 +52,10 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
 	private Map<String, Long> outputmap = new ConcurrentHashMap<>();
 	private Map<Long, Integer> index;
 	private Map<Integer, Long> timeStore;
-//	private List<NodeConnectorRef> srcnclist = new ArrayList<>();
-//	private List<NodeConnectorRef> dstnclist = new ArrayList<>();
+	private List<NodeConnectorRef> srcnclist = new ArrayList<>();
+	private List<NodeConnectorRef> dstnclist = new ArrayList<>();
 	private List<Long> lldptimelist = new ArrayList<>();
+	private List<Long> pktInlist = new ArrayList<>();
 	//private NetworkLatencyOutput output;
 	//private int size;
 	private NetworkLatency nl;
@@ -78,38 +79,43 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
 	@Override
 	public void onPacketReceived(PacketReceived latencyPkt) {
 		if (LatencyPacketParserUtil.checkLatencyPacket(latencyPkt.getPayload())) {
-			NodeConnectorRef src = LatencyPacketParserUtil.lldpToNodeConnectorRef(latencyPkt.getPayload(),false);
+			
 			Map<NodeConnectorRef, Long> la = nl.pktOutTimeMap;
 			LOG.info("size gotten by pktIn is " + la.size());
-        	if (src != null && nl.pktOutTimeMap.containsKey(src)) {
-        		//LOG.info("I got it!");	
-        		Date date = new Date();
-        		Long srcTime = date.getTime();
-        		//LOG.info("I got pktin at {}", srcTime);
-        		
-        		Long lldpTime = srcTime - nl.pktOutTimeMap.get(src);
-        		System.out.println("lldp round time is " + lldpTime);
-        		lldptimelist.add(lldpTime);
+			
+			Date date = new Date();
+    		Long srcTime = date.getTime();
+    			NodeConnectorRef src = LatencyPacketParserUtil.lldpToNodeConnectorRef(latencyPkt.getPayload(),false);
         		NodeConnectorRef dst = latencyPkt.getIngress();
-        		NodeId srcNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(src);
-        		BigInteger srcdpId = LatencyUtil.getDpId(srcNodeId);
-        		NodeId dstNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(dst);
-        		BigInteger dstdpId = LatencyUtil.getDpId(dstNodeId);
-        		System.out.println("latencyPkt time from " + srcdpId + " to " + dstdpId + "is " + lldpTime);
-        	} /*if (size == nl.getTimeMap().size()) {
-        			
-        			nl.pktOutTimeMap.clear();
-            		lldptimelist.clear();
-            //		srcnclist.clear();
-            //		dstnclist.clear();
-            		size = 0;
-            		System.out.println("PacketInListener finished!");
-        		}*/
+        		srcnclist.add(src);
+        		dstnclist.add(dst);
+        		pktInlist.add(srcTime);
+		} else if ( nl.flag && !srcnclist.isEmpty() && !dstnclist.isEmpty() && !pktInlist.isEmpty()) {
+			getresult (srcnclist, dstnclist, pktInlist, nl.pktOutTimeMap);
 		}
-		
     }
 	
 
+	private void getresult(List<NodeConnectorRef> srcnclist,
+			List<NodeConnectorRef> dstnclist, List<Long> pktInlist,
+			Map<NodeConnectorRef, Long> pktOutTimeMap) {
+		for (int i = 0; i < srcnclist.size(); i++) {
+			NodeConnectorRef src = srcnclist.get(i);
+			NodeId srcNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(src);
+    		BigInteger srcdpId = LatencyUtil.getDpId(srcNodeId);
+    		NodeConnectorRef dst = dstnclist.get(i);
+    		NodeId dstNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(dst);
+    		BigInteger dstdpId = LatencyUtil.getDpId(dstNodeId);
+			if (pktOutTimeMap.containsKey(src)) {
+				Long latency = pktInlist.get(i) - pktOutTimeMap.get(src);
+				System.out.println("latency from " + srcdpId + " to " + dstNodeId + " is: " + latency);
+			}
+		}
+		srcnclist.clear();
+		dstnclist.clear();
+		pktInlist.clear();
+	}
+	
 	@Override
 	public void close() throws Exception {
 		if (closeFlag){

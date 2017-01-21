@@ -66,7 +66,6 @@ public class LatencyRpcImpl implements LatencyService{
 		this.dataBroker = dataBroker;
 		this.nps = nps;
 		this.nl = nl;
-		// TODO Auto-generated constructor stub
 	}
 	
 	private NetworkLatencyOutput buildSwSwLatencyOutput() {
@@ -109,7 +108,7 @@ public class LatencyRpcImpl implements LatencyService{
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			System.out.println("NetworkLatency is finished");
+			LOG.info("NetworkLatency is finished");
 			latencyOutput = buildSwSwLatencyOutput();
 			LOG.info("finishing build output body");
 			

@@ -78,6 +78,7 @@ public class NetworkLatency implements LatencyRepo {
 	private ListenerRegistration<NotificationListener> nlReg;
 	private NotificationProviderService nps;
 	private NetworkLatency nl;
+	public static boolean flag;
 	
 	
 	
@@ -86,6 +87,7 @@ public class NetworkLatency implements LatencyRepo {
 		this.packetProcessingService = pps;
 		this.dataBroker = dataBroker;
 		pktOutTimeMap.clear();
+		flag = false;
 		
 	}
 
@@ -122,10 +124,10 @@ public class NetworkLatency implements LatencyRepo {
 			
 			//srclldp
 			byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
-			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);	
-			futureSend = packetProcessingService.transmitPacket(srclldppkt);
+			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);
 			Date srcdate = new Date();
- 		    Long srcpktOutTime = srcdate.getTime(); 	    
+ 		    Long srcpktOutTime = srcdate.getTime();
+			futureSend = packetProcessingService.transmitPacket(srclldppkt);
             pktOutTimeMap.put(srcNCRef, srcpktOutTime);
             LOG.info("size in pktout is " + pktOutTimeMap.size());	
             //LOG.info("pkt out keyset is " + pktOutTimeMap.keySet());
@@ -142,11 +144,7 @@ public class NetworkLatency implements LatencyRepo {
             //Thread.sleep(500);
 			
 		}
-		//Thread.sleep(1000);
-		//pktOutTimeMap.clear();
-/*		nlReg = nps.registerNotificationListener(pktInl);
-		pktInl.lReg = nlReg;*/
-		
+		flag = true;
 		return futureSend;
 		
 	}
