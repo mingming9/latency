@@ -77,17 +77,15 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
 
 	@Override
 	public void onPacketReceived(PacketReceived latencyPkt) {
-		LOG.info("Latency onPacketReceived is invorked");
 		if (LatencyPacketParserUtil.checkLatencyPacket(latencyPkt.getPayload())) {
-		NodeConnectorRef src = LatencyPacketParserUtil.lldpToNodeConnectorRef(latencyPkt.getPayload(),false);
-		LOG.info("src is " + src);
-		Map<NodeConnectorRef, Long> la = nl.pktOutTimeMap;
-		LOG.info("pktoutTime map is" + la);
+			NodeConnectorRef src = LatencyPacketParserUtil.lldpToNodeConnectorRef(latencyPkt.getPayload(),false);
+			Map<NodeConnectorRef, Long> la = nl.pktOutTimeMap;
+			LOG.info("size gotten by pktIn is " + la.size());
         	if (src != null && nl.pktOutTimeMap.containsKey(src)) {
-        		LOG.info("I got it!");	
+        		//LOG.info("I got it!");	
         		Date date = new Date();
         		Long srcTime = date.getTime();
-        		LOG.info("I got pktin at {}", srcTime);
+        		//LOG.info("I got pktin at {}", srcTime);
         		
         		Long lldpTime = srcTime - nl.pktOutTimeMap.get(src);
         		System.out.println("lldp round time is " + lldpTime);
@@ -97,7 +95,7 @@ public class PacketInListener implements PacketProcessingListener, AutoCloseable
         		BigInteger srcdpId = LatencyUtil.getDpId(srcNodeId);
         		NodeId dstNodeId = InventoryUtil.getNodeIdFromNodeConnectorRef(dst);
         		BigInteger dstdpId = LatencyUtil.getDpId(dstNodeId);
-        		System.out.println("latencyPkt time from " + srcdpId + "to " + dstdpId + "is " + lldpTime);
+        		System.out.println("latencyPkt time from " + srcdpId + " to " + dstdpId + "is " + lldpTime);
         	} /*if (size == nl.getTimeMap().size()) {
         			
         			nl.pktOutTimeMap.clear();

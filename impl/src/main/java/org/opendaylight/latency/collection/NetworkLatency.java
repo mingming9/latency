@@ -76,7 +76,6 @@ public class NetworkLatency implements LatencyRepo {
 	public ListenableFuture<RpcResult<java.lang.Void>> listenablefuture;
 	public Future<RpcResult<Void>> futureSend;
 	private ListenerRegistration<NotificationListener> nlReg;
-	//private PacketInListener pktInl;
 	private NotificationProviderService nps;
 	private NetworkLatency nl;
 	
@@ -86,12 +85,13 @@ public class NetworkLatency implements LatencyRepo {
 			DataBroker dataBroker) {
 		this.packetProcessingService = pps;
 		this.dataBroker = dataBroker;
+		pktOutTimeMap.clear();
 		
 	}
 
 	@Override
 	public Future<RpcResult<java.lang.Void>> execute() throws Exception {
-		System.out.println("NetworkLatency is running");
+		LOG.info("NetworkLatency is running");
 		InstanceIdentifier<Topology> topoIId = TopologyUtil.createTopoIId(TOPO_ID);
 		Topology topo = (Topology) TopologyUtil.readTopo(topoIId,dataBroker);
 		List<Link> linkList = topo.getLink();
@@ -109,16 +109,16 @@ public class NetworkLatency implements LatencyRepo {
 			Long srcPortNo = srcflowCapableNodeConnector.getPortNumber().getUint32();
 			
 			//dst
-			NodeId dstNodeId = new NodeId(link.getDestination().getDestNode().getValue());
-			NodeRef dstNodeRef = InventoryUtil.getNodeRefFromNodeId(dstNodeId);
-			FlowCapableNode dstflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(dstNodeId, dataBroker);
-			IpAddress dstipAddress = srcflowCapableNode.getIpAddress();
+		//	NodeId dstNodeId = new NodeId(link.getDestination().getDestNode().getValue());
+		//	NodeRef dstNodeRef = InventoryUtil.getNodeRefFromNodeId(dstNodeId);
+		//	FlowCapableNode dstflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(dstNodeId, dataBroker);
+		//	IpAddress dstipAddress = srcflowCapableNode.getIpAddress();
 			NodeConnectorRef dstNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getDestination().getDestTp());
-			NodeConnectorId dstnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(dstNCRef);
+		//	NodeConnectorId dstnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(dstNCRef);
 			InstanceIdentifier<NodeConnector> dstncIId = (InstanceIdentifier<NodeConnector>) dstNCRef.getValue();
 			FlowCapableNodeConnector dstflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(dstncIId, dataBroker);
 			MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();
-			Long dstPortNo = dstflowCapableNodeConnector.getPortNumber().getUint32();
+		//	Long dstPortNo = dstflowCapableNodeConnector.getPortNumber().getUint32();
 			
 			//srclldp
 			byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
@@ -127,17 +127,18 @@ public class NetworkLatency implements LatencyRepo {
 			Date srcdate = new Date();
  		    Long srcpktOutTime = srcdate.getTime(); 	    
             pktOutTimeMap.put(srcNCRef, srcpktOutTime);
-            LOG.info("srcpktOutTimeMap is {}", pktOutTimeMap);	
+            LOG.info("size in pktout is " + pktOutTimeMap.size());	
+            //LOG.info("pkt out keyset is " + pktOutTimeMap.keySet());
             //Thread.sleep(500);
 			
              //dstlldp
- 			byte[] dstpayload = LatencyPacketUtil.buildLldpFrame(dstNodeId, dstnodeConnectorId, dstMac, dstPortNo, srcMac);
+ 			/*byte[] dstpayload = LatencyPacketUtil.buildLldpFrame(dstNodeId, dstnodeConnectorId, dstMac, dstPortNo, srcMac);
  			TransmitPacketInput dstlldppkt = LatencyUtil.createPacketOut(dstpayload, dstNodeRef, dstNCRef);
  			futureSend = packetProcessingService.transmitPacket(dstlldppkt);
  			Date dstdate = new Date();
 		    Long dstpktOutTime = dstdate.getTime();
             pktOutTimeMap.put(dstNCRef, dstpktOutTime);
-            LOG.info("dstpktOutTimeMap is {}", pktOutTimeMap);
+            LOG.info("dstpktOutTimeMap is {}", pktOutTimeMap);*/
             //Thread.sleep(500);
 			
 		}
@@ -145,11 +146,9 @@ public class NetworkLatency implements LatencyRepo {
 		//pktOutTimeMap.clear();
 /*		nlReg = nps.registerNotificationListener(pktInl);
 		pktInl.lReg = nlReg;*/
+		
 		return futureSend;
 		
-	}
-	public Map<NodeConnectorRef, Long> getTimeMap() {
-		return this.pktOutTimeMap;
 	}
 	
 

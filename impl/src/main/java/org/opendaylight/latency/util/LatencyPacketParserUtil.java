@@ -188,18 +188,13 @@ public class LatencyPacketParserUtil {
             LLDP lldp = (LLDP) ethPkt.getPayload();
             final LLDPTLV hashLldptlv = lldp.getCustomTLV(
                 new CustomTLVKey(BitBufferHelper.getInt(LLDPTLV.OFOUI), LLDPTLV.CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC[0]));
-            //System.out.println("I got the customized hashLldptlv " + hashLldptlv);
             if (hashLldptlv != null) {
             	byte[] rawTlvValue = hashLldptlv.getValue();
             	String rawValue = LLDPTLV.getCustomString(rawTlvValue, hashLldptlv.getLength());
-            	LOG.info("I got the customized rawValue {} ", rawValue);
             	String checkout = "latency";
-            	LOG.info("the latency string is {}", checkout);
             	if (rawValue.equals(checkout)) {
             		isLatencyPkt = true;
             	}
-            } else {
-            	LOG.debug("Custom security hint wasn't specified via Custom TLV in LLDP packet.");
             }
         }
 

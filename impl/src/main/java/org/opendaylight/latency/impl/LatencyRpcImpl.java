@@ -105,18 +105,20 @@ public class LatencyRpcImpl implements LatencyService{
 			try {
 				nl = new NetworkLatency(packetProcessingService, dataBroker);
 				Future<RpcResult<java.lang.Void>> future = nl.execute();
-			/*	PacketInListener pktInl = new PacketInListener(nl);
-				nlReg = nps.registerNotificationListener(pktInl);
-				pktInl.lReg = nlReg;*/
 				
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			System.out.println("NetworkLatency is finished");
 			latencyOutput = buildSwSwLatencyOutput();
 			LOG.info("finishing build output body");
 			
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			return Futures.<RpcResult<NetworkLatencyOutput>>immediateFuture(
 					RpcResultBuilder.<NetworkLatencyOutput>success().withResult(latencyOutput).build());
 			
