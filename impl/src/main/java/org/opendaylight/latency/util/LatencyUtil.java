@@ -8,23 +8,18 @@
 package org.opendaylight.latency.util;
 
 import java.math.BigInteger;
-import java.util.List;
 
-import org.opendaylight.openflowjava.protocol.api.connection.ConnectionAdapter;
-import org.opendaylight.openflowplugin.api.openflow.md.core.ConnectionConductor;
 import org.opendaylight.openflowplugin.api.openflow.md.core.session.SessionContext;
 import org.opendaylight.openflowplugin.api.openflow.md.core.session.SwitchSessionKeyOF;
-import org.opendaylight.openflowplugin.openflow.md.core.ConnectionConductorImpl;
 import org.opendaylight.openflowplugin.openflow.md.core.session.OFSessionUtil;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.Node;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorRef;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeRef;
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.nodes.Node;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.EchoInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.EchoInputBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInputBuilder;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutput;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
 
 
@@ -49,9 +44,9 @@ public abstract class LatencyUtil {
 		return new BigInteger(dpids);		
 	}
 	
-	public static EchoInput constructEchoInput(NodeId nodeId) {
-		
-		return new EchoInputBuilder().setData(LATENCY_TEST).setVersion(OF13).setXid(getSessionContext(nodeId).getNextXid()).build();
+	public static org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId getNodeIdfromDpId (BigInteger dpId) {
+		String nodeId = OF_URI_PREFIX + dpId.toString();
+		return new org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId(nodeId);		
 	}
 	
 	public static TransmitPacketInput createPacketOut(byte[] payload, NodeConnectorRef ingress, NodeConnectorRef egress) {

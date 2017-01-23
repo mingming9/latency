@@ -32,7 +32,7 @@ import com.google.common.base.Optional;
 public class TopologyUtil {
 
 	public TopologyUtil() {
-		// TODO Auto-generated constructor stub
+
 	}
 	
 	public static Object readTopo(InstanceIdentifier<Topology> topoIId, DataBroker dataBroker) {       
@@ -50,8 +50,7 @@ public class TopologyUtil {
 	
 	public static InstanceIdentifier<Topology> createTopoIId (String tOPO_ID){
 		return InstanceIdentifier.builder(NetworkTopology.class).child(Topology.class, new TopologyKey(new TopologyId(tOPO_ID))).build();
-	}
-	
+	}	
 	
 	protected static TpId getTpIdFromNodeConnectorRef(NodeConnectorRef ref) {
         NodeConnectorId nci = ref.getValue()
@@ -59,8 +58,6 @@ public class TopologyUtil {
                 .getId();
         return new TpId(nci);
     }
-	
-
 
     public static String getNodeString(NodeConnectorRef ref) {
         String nodeIdString = ref.getValue().firstIdentifierOf(Node.class)

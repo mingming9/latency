@@ -8,45 +8,26 @@
 package org.opendaylight.latency.impl;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
 import org.opendaylight.controller.sal.binding.api.NotificationProviderService;
-import org.opendaylight.latency.collection.ConstructRpcOutput;
+import org.opendaylight.latency.collection.LatencyEntry;
 import org.opendaylight.latency.collection.NetworkLatency;
 import org.opendaylight.latency.collection.PacketInListener;
+import org.opendaylight.latency.collection.SwitchesLatency;
 import org.opendaylight.latency.util.LatencyUtil;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.openflow.protocol.rev130731.MultipartReply;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.ControllerSwitchLatencyInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.ControllerSwitchLatencyOutput;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.LatencyService;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.LatencyType;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutputBuilder;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.SwitchSwitchLatencyInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.SwitchSwitchLatencyOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.network.latency.output.Pairs;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.network.latency.output.PairsBuilder;
+import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId;
 import org.opendaylight.yangtools.concepts.ListenerRegistration;
 import org.opendaylight.yangtools.yang.binding.NotificationListener;
 import org.opendaylight.yangtools.yang.common.RpcResult;
-import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.JdkFutureAdapters;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
 
 public class LatencyRpcImpl implements LatencyService{
 	private static final Logger LOG = LoggerFactory.getLogger(LatencyProvider.class);
@@ -54,86 +35,72 @@ public class LatencyRpcImpl implements LatencyService{
 	private ListenerRegistration<NotificationListener> nlReg;
 	private PacketInListener pktInl;
 	private NotificationProviderService nps;
-	private NetworkLatency nl;
 	private DataBroker dataBroker;
-	private NetworkLatencyOutput latencyOutput;
-	private final ListeningExecutorService executor =
-             MoreExecutors.listeningDecorator( Executors.newCachedThreadPool() );
 
 	
-	public LatencyRpcImpl(PacketProcessingService packetProcessingService, DataBroker dataBroker, NotificationProviderService nps, NetworkLatency nl) {
+	public LatencyRpcImpl(PacketProcessingService packetProcessingService, DataBroker dataBroker,
+			NotificationProviderService nps) {
 		this.packetProcessingService = packetProcessingService;
 		this.dataBroker = dataBroker;
 		this.nps = nps;
-		this.nl = nl;
 	}
 	
-	private NetworkLatencyOutput buildSwSwLatencyOutput() {
-		NetworkLatencyOutputBuilder lab = new NetworkLatencyOutputBuilder();
-		List<Pairs> pairs = new ArrayList<Pairs>();
-		List<String> string = new ArrayList<String>();
-		for(int i = 0; i < 10; i++) {
-			string.add(String.valueOf(i));
-		}
-		for(String p: string) {
-			
-			PairsBuilder pb = new PairsBuilder();
-			Pairs pair = pb.setBDpId(new BigInteger(p)).build();
-			pairs.add(pair);
-			
-		}
-		
-		latencyOutput = lab.setPairs(pairs).build();
-		return latencyOutput;
-	}
 
 	@Override
-	public Future<RpcResult<SwitchSwitchLatencyOutput>> switchSwitchLatency(
-			SwitchSwitchLatencyInput input) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Future<RpcResult<NetworkLatencyOutput>> networkLatency(
+	public Future<RpcResult<java.lang.Void>> networkLatency(
 			final NetworkLatencyInput input) {
-		LOG.info("NetworkLatecy detection is invorked");
+		
+		//Register network latency packet_in listener
+		NetworkLatency nl = new NetworkLatency(packetProcessingService, dataBroker);
+		LatencyEntry nle = nl;
+		PacketInListener npktInl = new PacketInListener(nle);
+		nlReg = nps.registerNotificationListener(npktInl);
+		npktInl.nlReg = nlReg;
+		
 		LatencyType type = input.getType();
+		Future<RpcResult<java.lang.Void>> future = null;
 		if (type.equals(LatencyType.SWITCHES)) {
 			
 			try {
-				nl = new NetworkLatency(packetProcessingService, dataBroker);
-				Future<RpcResult<java.lang.Void>> future = nl.execute();
+				future = nl.execute();
 				
 			} catch (Exception e) {
 				e.printStackTrace();
+				nlReg.close();
 			}
-			LOG.info("NetworkLatency is finished");
-			latencyOutput = buildSwSwLatencyOutput();
-			LOG.info("finishing build output body");
-			
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return Futures.<RpcResult<NetworkLatencyOutput>>immediateFuture(
-					RpcResultBuilder.<NetworkLatencyOutput>success().withResult(latencyOutput).build());
-			
 		
-	}
-		return Futures.<RpcResult<NetworkLatencyOutput>>immediateFuture(
-				RpcResultBuilder.<NetworkLatencyOutput>success().withResult(latencyOutput).build());
+		}
+		return future;
 	}
 
 	
-	
+
 	@Override
-	public Future<RpcResult<ControllerSwitchLatencyOutput>> controllerSwitchLatency(
-			ControllerSwitchLatencyInput input) {
-		// TODO Auto-generated method stub
-		return null;
+	public Future<RpcResult<Void>> switchSwitchLatency(
+			SwitchSwitchLatencyInput input) {
+		
+		//Register switch to switch packet_in listener
+		SwitchesLatency swl = new SwitchesLatency(packetProcessingService, dataBroker);
+		LatencyEntry sle = swl;
+		PacketInListener spktInl = new PacketInListener(sle);
+		nlReg = nps.registerNotificationListener(spktInl);
+		spktInl.nlReg = nlReg;
+		swl.nlReg = nlReg;
+		
+		BigInteger adpId = input.getADpId();
+		BigInteger bdpId = input.getBDpId();
+		NodeId aNodeId = LatencyUtil.getNodeIdfromDpId(adpId);
+		NodeId bNodeId = LatencyUtil.getNodeIdfromDpId(bdpId);
+		Future<RpcResult<Void>> future = null;
+			try {
+				future = swl.execute(aNodeId, bNodeId);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+				nlReg.close();
+			}
+
+		return future;
 	}
 
 }

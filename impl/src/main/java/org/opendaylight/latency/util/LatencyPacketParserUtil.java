@@ -174,7 +174,10 @@ public class LatencyPacketParserUtil {
 
         return secAuthenticatorOk;
     }
-    
+    /**
+     * @param payload
+     * @return isLatencyPkt
+     */
     public static boolean checkLatencyPacket(byte[] payload) {
     	Ethernet ethPkt = new Ethernet();
     	boolean isLatencyPkt = false;

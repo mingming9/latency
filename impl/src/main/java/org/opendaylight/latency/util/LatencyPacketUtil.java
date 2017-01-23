@@ -80,21 +80,6 @@ public final class LatencyPacketUtil {
         customTlv.setType(LLDPTLV.TLVType.Custom.getValue())
                 .setLength((short) customValue.length).setValue(customValue);
         discoveryPkt.addCustomTLV(customTlv);
-
-        //Create LLDP CustomSec TLV
-        /*byte[] pureValue = new byte[1];
-        try {
-            pureValue = getValueForLLDPPacketIntegrityEnsuring(nodeConnectorId);
-            byte[] customSecValue = LLDPTLV.createCustomTLVValue(CUSTOM_TLV_SUB_TYPE_CUSTOM_SEC, pureValue);
-            LLDPTLV customSecTlv = new LLDPTLV();
-            customSecTlv.setType(LLDPTLV.TLVType.Custom.getValue())
-            .setLength((short)customSecValue.length)
-            .setValue(customSecValue);
-            discoveryPkt.addCustomTLV(customSecTlv);
-        } catch (NoSuchAlgorithmException e1) {
-            LOG.info("LLDP extra authenticator creation failed: {}", e1.getMessage());
-            LOG.debug("Reason why LLDP extra authenticator creation failed: ", e1);
-        }*/
         
         //Create Latency Test Custom TLV
         String latency = "latency";
@@ -106,9 +91,6 @@ public final class LatencyPacketUtil {
         .setLength((short)latencyValue.length)
         .setValue(latencyValue);
         discoveryPkt.addCustomTLV(latencyTLV);
-       
-        
-
 
         // Create ethernet pkt
         byte[] sourceMac = HexEncode.bytesFromHexString(src.getValue());

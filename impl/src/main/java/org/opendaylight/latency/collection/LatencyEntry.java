@@ -7,14 +7,21 @@
  */
 package org.opendaylight.latency.collection;
 
+import java.util.Map;
 import java.util.concurrent.Future;
 
+import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeConnectorRef;
+import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId;
 import org.opendaylight.yangtools.yang.common.RpcResult;
 
-public interface LatencyRepo {
+public interface LatencyEntry {
+
 	
-	public Long getCSLatency();
-	public Long getSSLatency();
-	public Future<RpcResult<Void>> execute() throws Exception;
+	public boolean getflag();
+
+	public Map<NodeConnectorRef, Long> getpktOutTimeMap();
+
+	public Map<NodeConnectorRef, Long> getpingTimeMap();
+
 	
 }
