@@ -55,7 +55,7 @@ public class PacketInListener implements PacketProcessingListener{
        		pktInlist.add(srcTime);
 		} 
 		
-		//The first packet_in packet arrived after latency detecting packets will invoke calculating the latency results.
+		//The first packet_in packet arrived after latency detecting packets will invoke calculating latency results.
 		else if ( le.getflag() && !srcnclist.isEmpty() && !dstnclist.isEmpty() && !pktInlist.isEmpty()) {
 			getresult (srcnclist, dstnclist, pktInlist, le.getpktOutTimeMap(), le.getpingTimeMap());
 		}
@@ -87,7 +87,7 @@ public class PacketInListener implements PacketProcessingListener{
 			}
 		}
 		
-		//Clear these three lists after finishing main function
+		//Clear these three lists after finishing main function and close packet_in listener
 		srcnclist.clear();
 		dstnclist.clear();
 		pktInlist.clear();

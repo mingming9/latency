@@ -57,7 +57,8 @@ public class LatencyProvider implements BindingAwareProvider, AutoCloseable{
 			this.rpcReg.close();
 		} catch (Exception e) {
 			LOG.error(e.getMessage(), e);
-		}	
+		}
+		LOG.info("LatencyProvider is closed");	
 	}
 	
 }
