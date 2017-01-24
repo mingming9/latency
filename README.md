@@ -37,13 +37,17 @@ In mininet VM:
 ``` bash
 username@ubuntu:sudo mn --controller=remote,ip=${controller_ip_address} --mac --switch=ovsk,protocols=OpenFlow13 --topo tree,depth=2,fanout=3
 ```
-Now the environment is ready! Let begin to test!
+Now the environment is ready! Let's begin to test!
 
 ### Latency detecting
 
 Login dulx:
-http://192.168.126.152:8181/index.html
+http://192.168.126.152:8181/index.html.
+
+
 In Topology tag, we can see network topology.
+
+
 In Yang UI tag, we can find "latency" restconf interface.
 
 Path "latency/operations/network-latency", choose type "SWITCHES", send the input. Then we can see latency detecting of network in console.
