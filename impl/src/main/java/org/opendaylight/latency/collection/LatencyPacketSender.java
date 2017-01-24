@@ -7,35 +7,17 @@
  */
 package org.opendaylight.latency.collection;
 
-import java.lang.reflect.Field;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-
-import org.opendaylight.controller.liblldp.Ethernet;
-import org.opendaylight.controller.liblldp.PacketException;
 import org.opendaylight.controller.md.sal.binding.api.DataBroker;
-import org.opendaylight.controller.md.sal.common.api.data.TransactionCommitFailedException;
-import org.opendaylight.controller.sal.binding.api.BindingAwareBroker.ProviderContext;
-import org.opendaylight.controller.sal.binding.api.BindingAwareProvider;
 import org.opendaylight.controller.sal.binding.api.NotificationProviderService;
-import org.opendaylight.latency.echo.EchoMsg;
-import org.opendaylight.latency.impl.LatencyProvider;
-import org.opendaylight.latency.ping.Ping;
 import org.opendaylight.latency.util.InventoryUtil;
 import org.opendaylight.latency.util.LatencyPacketUtil;
 import org.opendaylight.latency.util.LatencyUtil;
 import org.opendaylight.latency.util.TopologyUtil;
-import org.opendaylight.openflowplugin.applications.lldpspeaker.LLDPSpeaker;
-import org.opendaylight.openflowplugin.applications.lldpspeaker.NodeConnectorEventsObserver;
-import org.opendaylight.openflowplugin.applications.topology.lldp.utils.LLDPDiscoveryUtils;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.inet.types.rev100924.IpAddress;
 import org.opendaylight.yang.gen.v1.urn.ietf.params.xml.ns.yang.ietf.yang.types.rev100924.MacAddress;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.flow.inventory.rev130819.FlowCapableNode;
@@ -45,29 +27,21 @@ import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeCon
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeId;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.NodeRef;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.inventory.rev130819.node.NodeConnector;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingListener;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketProcessingService;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.PacketReceived;
 import org.opendaylight.yang.gen.v1.urn.opendaylight.packet.service.rev130709.TransmitPacketInput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.latency.rev150105.NetworkLatencyOutput;
-import org.opendaylight.yang.gen.v1.urn.opendaylight.params.xml.ns.yang.openflow.applications.lldp.speaker.rev141023.OperStatus;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.Topology;
 import org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.network.topology.topology.Link;
 import org.opendaylight.yangtools.concepts.ListenerRegistration;
 import org.opendaylight.yangtools.yang.binding.InstanceIdentifier;
 import org.opendaylight.yangtools.yang.binding.NotificationListener;
 import org.opendaylight.yangtools.yang.common.RpcResult;
-import org.opendaylight.yangtools.yang.common.RpcResultBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.CheckedFuture;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.JdkFutureAdapters;
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class NetworkLatency implements LatencyRepo {
-	private static final Logger LOG = LoggerFactory.getLogger(NetworkLatency.class);
+public class LatencyPacketSender {
+	private static final Logger LOG = LoggerFactory.getLogger(LatencyPacketSender.class);
 	public static Map<NodeConnectorRef, Long> pktOutTimeMap = new ConcurrentHashMap<>();
 	private PacketProcessingService packetProcessingService;
 	private DataBroker dataBroker;
@@ -77,11 +51,10 @@ public class NetworkLatency implements LatencyRepo {
 	public Future<RpcResult<Void>> futureSend;
 	private ListenerRegistration<NotificationListener> nlReg;
 	private NotificationProviderService nps;
-	private NetworkLatency nl;
 	
 	
 	
-	public NetworkLatency(PacketProcessingService pps,
+	public LatencyPacketSender (PacketProcessingService pps,
 			DataBroker dataBroker) {
 		this.packetProcessingService = pps;
 		this.dataBroker = dataBroker;
@@ -89,18 +62,24 @@ public class NetworkLatency implements LatencyRepo {
 		
 	}
 
-	@Override
-	public Future<RpcResult<java.lang.Void>> execute() throws Exception {
+	/*
+	 * Network latency detecting
+	 */
+	public Future<RpcResult<java.lang.Void>> execute() {
 		LOG.info("NetworkLatency is running");
 		InstanceIdentifier<Topology> topoIId = TopologyUtil.createTopoIId(TOPO_ID);
 		Topology topo = (Topology) TopologyUtil.readTopo(topoIId,dataBroker);
 		List<Link> linkList = topo.getLink();
 		for(Link link : linkList) {
-			//src
+			//Read src node and src node connector information from a link
 			NodeId srcNodeId = new NodeId(link.getSource().getSourceNode().getValue());
 			NodeRef srcNodeRef = InventoryUtil.getNodeRefFromNodeId(srcNodeId);
+			
+			//Read src node ip address from inventory data store
 			FlowCapableNode srcflowCapableNode = (FlowCapableNode) InventoryUtil.readFlowCapableNodeFromNodeId(srcNodeId, dataBroker);
 			IpAddress srcipAddress = srcflowCapableNode.getIpAddress();
+			
+			//Read src node port number from inventory data store
 			NodeConnectorRef srcNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getSource().getSourceTp());
 			NodeConnectorId srcnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(srcNCRef);
 			InstanceIdentifier<NodeConnector> srcncIId = (InstanceIdentifier<NodeConnector>) srcNCRef.getValue();
@@ -108,22 +87,22 @@ public class NetworkLatency implements LatencyRepo {
 			MacAddress srcMac = srcflowCapableNodeConnector.getHardwareAddress();
 			Long srcPortNo = srcflowCapableNodeConnector.getPortNumber().getUint32();
 			
-			//dst
+			//Read dst node mac address from inventory data store
+			NodeId dstNodeId = new NodeId(link.getDestination().getDestNode().getValue());
 			NodeConnectorRef dstNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getDestination().getDestTp());
 			InstanceIdentifier<NodeConnector> dstncIId = (InstanceIdentifier<NodeConnector>) dstNCRef.getValue();
 			FlowCapableNodeConnector dstflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(dstncIId, dataBroker);
 			MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();;
 			
-			//pktout
+			//Construct LLDP packet and send it out by packet_out meassage, store the sent time
 			byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
 			TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);	
 			Date srcdate = new Date();
  		    Long srcpktOutTime = srcdate.getTime(); 
  		    pktOutTimeMap.put(srcNCRef, srcpktOutTime);
 			futureSend = packetProcessingService.transmitPacket(srclldppkt);
-	    
-            
-            LOG.info("size in pktout is " + pktOutTimeMap.size());	
+	        
+            LOG.info("Size in pktout is " + pktOutTimeMap.size());	
 			
 		}
 
@@ -131,25 +110,56 @@ public class NetworkLatency implements LatencyRepo {
 		
 	}
 	
-
-	@Override
-	public Long getCSLatency() {
-		// TODO Auto-generated method stub
-		return null;
+	/* 
+	 * SWitch to switch latency detecting
+	 */
+public Future<RpcResult<Void>> execute(org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId aNodeId,
+		org.opendaylight.yang.gen.v1.urn.tbd.params.xml.ns.yang.network.topology.rev131021.NodeId bNodeId) throws Exception {
+		
+		//Read topology information from topology data store
+		InstanceIdentifier<Topology> topoIId = TopologyUtil.createTopoIId(TOPO_ID);
+		Topology topo = (Topology) TopologyUtil.readTopo(topoIId,dataBroker);
+		List<Link> linkList = topo.getLink();
+		int count = 0;
+		for (Link link : linkList) {
+			if (link.getSource().getSourceNode().equals(aNodeId) && link.getDestination().getDestNode().equals(bNodeId)) {
+				
+				//Read src node and src node connector information from a link,
+				NodeId srcNodeId = new NodeId(link.getSource().getSourceNode().getValue());
+				NodeRef srcNodeRef = InventoryUtil.getNodeRefFromNodeId(srcNodeId);
+							
+				//Read src node port number from inventory datat store
+				NodeConnectorRef srcNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getSource().getSourceTp());
+				NodeConnectorId srcnodeConnectorId = InventoryUtil.getNodeConnectorIdFromNodeConnectorRef(srcNCRef);
+				InstanceIdentifier<NodeConnector> srcncIId = (InstanceIdentifier<NodeConnector>) srcNCRef.getValue();
+				FlowCapableNodeConnector srcflowCapableNodeConnector = (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(srcncIId, dataBroker);
+				MacAddress srcMac = srcflowCapableNodeConnector.getHardwareAddress();
+				Long srcPortNo = srcflowCapableNodeConnector.getPortNumber().getUint32();
+				
+				//Read dst node mac from inventory data store
+				NodeConnectorRef dstNCRef = TopologyUtil.getNodeConnectorRefFromTpId(link.getDestination().getDestTp());
+				InstanceIdentifier<NodeConnector> dstncIId = (InstanceIdentifier<NodeConnector>) dstNCRef.getValue();
+				FlowCapableNodeConnector dstflowCapableNodeConnector= (FlowCapableNodeConnector) InventoryUtil.readFlowCapableNodeConnectorFromNodeConnectorIId(dstncIId, dataBroker);
+				MacAddress dstMac = dstflowCapableNodeConnector.getHardwareAddress();
+				
+				//Constract LLDP packet and sent it out by packet out message, store the sent time
+				byte[] srcpayload = LatencyPacketUtil.buildLldpFrame(srcNodeId, srcnodeConnectorId, srcMac, srcPortNo, dstMac);
+				TransmitPacketInput srclldppkt = LatencyUtil.createPacketOut(srcpayload, srcNodeRef, srcNCRef);
+				Date srcdate = new Date();
+	 		    Long srcpktOutTime = srcdate.getTime();
+				futureSend = packetProcessingService.transmitPacket(srclldppkt);			
+	            pktOutTimeMap.put(srcNCRef, srcpktOutTime);
+	            LOG.info("pktout time is " + srcpktOutTime +"size in pktout is " + pktOutTimeMap.size());
+	            count++;
+			} 
+			
+		}
+		if (count == 0) {
+			System.out.println(aNodeId + " is not linkded with " + bNodeId);
+			nlReg.close();
+		}
+		return futureSend;
 	}
-
-	@Override
-	public Long getSSLatency() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-
-
-
-
-
-
 
 
 }
