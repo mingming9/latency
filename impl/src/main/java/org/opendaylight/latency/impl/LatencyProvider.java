@@ -42,12 +42,12 @@ public class LatencyProvider implements BindingAwareProvider, AutoCloseable{
 		NotificationProviderService nps = session.getSALService(NotificationProviderService.class);
 		
 		//register rpc service
-		LatencyPacketSender nl = new LatencyPacketSender(pps,db);
-		LatencyRpcImpl rpcImpl = new LatencyRpcImpl(pps, db, nps, nl);
+		LatencyPacketSender lps = new LatencyPacketSender(pps,db);
+		LatencyRpcImpl rpcImpl = new LatencyRpcImpl(lps);
 		this.rpcReg = session.addRpcImplementation(LatencyService.class, rpcImpl);
 		
 		//register packet in listener
-		PacketInListener pktInl = new PacketInListener(nl);
+		PacketInListener pktInl = new PacketInListener(lps);
 		nlReg = nps.registerNotificationListener(pktInl);
 		
 		LOG.info("LatencyProvider session initiated successfully");

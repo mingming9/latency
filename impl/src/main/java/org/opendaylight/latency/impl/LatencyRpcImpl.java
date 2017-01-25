@@ -29,21 +29,12 @@ import org.slf4j.LoggerFactory;
 
 public class LatencyRpcImpl implements LatencyService{
 	private static final Logger LOG = LoggerFactory.getLogger(LatencyProvider.class);
-	private PacketProcessingService packetProcessingService;
 	private ListenerRegistration<NotificationListener> nlReg;
-	private PacketInListener pktInl;
-	private NotificationProviderService nps;
-	private DataBroker dataBroker;
 	private LatencyPacketSender latencyPacketSender;
 
 	
-	public LatencyRpcImpl(PacketProcessingService packetProcessingService, DataBroker dataBroker, NotificationProviderService nps, LatencyPacketSender latencyPacketSender) {
-		this.packetProcessingService = packetProcessingService;
-		this.dataBroker = dataBroker;
-		this.nps = nps;
+	public LatencyRpcImpl(LatencyPacketSender latencyPacketSender) {
 		this.latencyPacketSender = latencyPacketSender;
-		this.latencyPacketSender = new LatencyPacketSender(packetProcessingService, dataBroker);
-
 	}
 	
 
